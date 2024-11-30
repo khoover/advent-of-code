@@ -1,5 +1,4 @@
 use aoc_runner_derive::aoc;
-use regex;
 use std::sync::LazyLock;
 use trie_rs::map::{Trie, TrieBuilder};
 
