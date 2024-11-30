@@ -7,7 +7,7 @@ use nom::{
     combinator::{all_consuming, map_res, opt, value},
     multi::{fold_many_m_n, separated_list1},
     sequence::{pair, preceded, separated_pair, terminated},
-    Finish, IResult,
+    Finish, IResult, Parser,
 };
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -40,7 +40,8 @@ impl Draw {
                     blue: b.unwrap_or_default(),
                 })
             },
-        )(input)
+        )
+        .parse(input)
     }
 }
 
@@ -57,16 +58,17 @@ impl Rgb {
             value(Self::R, tag("red")),
             value(Self::G, tag("green")),
             value(Self::B, tag("blue")),
-        ))(input)
+        ))
+        .parse(input)
     }
 }
 
 fn game_id(input: &str) -> IResult<&str, u32> {
-    preceded(pair(tag("Game"), space1), u32)(input)
+    preceded(pair(tag("Game"), space1), u32).parse(input)
 }
 
 fn draws(input: &str) -> IResult<&str, Vec<Draw>> {
-    separated_list1(tag("; "), Draw::nom)(input)
+    separated_list1(tag("; "), Draw::nom).parse(input)
 }
 
 #[aoc_generator(day2)]
@@ -74,7 +76,8 @@ fn part1_gen(input: &str) -> Result<Vec<(u32, Vec<Draw>)>> {
     input
         .lines()
         .map(|line| {
-            all_consuming(separated_pair(game_id, tag(": "), draws))(line)
+            all_consuming(separated_pair(game_id, tag(": "), draws))
+                .parse(line)
                 .finish()
                 .map(|(_, x)| x)
                 .map_err(|e| Error::msg(format!("Failed to parse input: {e}")))
