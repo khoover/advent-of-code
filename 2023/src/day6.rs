@@ -16,12 +16,7 @@ fn get_races(input: &str) -> StrIResult<'_, Vec<(u16, u16)>> {
         newline,
         preceded(tag("Distance:"), ws(separated_list1(space1, u16))),
     )
-    .map(|(times, distances)| {
-        times
-            .into_iter()
-            .zip(distances.into_iter())
-            .collect::<Vec<_>>()
-    })
+    .map(|(times, distances)| times.into_iter().zip(distances).collect::<Vec<_>>())
     .parse(input)
 }
 

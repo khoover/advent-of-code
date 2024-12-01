@@ -60,8 +60,7 @@ struct RangeMap {
 
 impl RangeMap {
     fn new(ranges: Vec<RangeOffset>) -> Self {
-        let mut heap: BinaryHeap<Reverse<RangeOffset>> =
-            ranges.into_iter().map(|x| Reverse(x)).collect();
+        let mut heap: BinaryHeap<Reverse<RangeOffset>> = ranges.into_iter().map(Reverse).collect();
         let mut ranges = Vec::with_capacity(heap.len() * 2);
         let Some(Reverse(mut prev)) = heap.pop() else {
             return Self { ranges };
@@ -104,7 +103,7 @@ impl RangeMap {
 
     fn nom(input: &str) -> IResult<&str, Self> {
         separated_list0(newline, RangeOffset::nom)
-            .map(|ranges| Self::new(ranges))
+            .map(Self::new)
             .parse(input)
     }
 }
