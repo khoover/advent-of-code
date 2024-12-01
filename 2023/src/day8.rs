@@ -9,7 +9,10 @@ use nom::{
     sequence::{delimited, preceded, separated_pair},
     Parser,
 };
-use std::{ops::Index, thread::current};
+use std::{
+    fmt::{Display, Write},
+    ops::Index,
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Direction {
@@ -61,6 +64,21 @@ impl NodeTag {
             assert_unchecked(self.0[1] < 26);
             assert_unchecked(self.0[2] < 26);
         }
+    }
+}
+
+impl Display for NodeTag {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.assume_bounds();
+        for c in self
+            .0
+            .iter()
+            .copied()
+            .map(|b| char::from_u32((b + b'A') as u32).unwrap())
+        {
+            f.write_char(c)?;
+        }
+        Ok(())
     }
 }
 
@@ -131,13 +149,29 @@ impl TagMap {
                     .enumerate()
                     .filter_map(move |(b, second)| {
                         if second.children[0].is_some() {
-                            Some(TagMap([a as u8, b as u8, 0]))
+                            Some(NodeTag([a as u8, b as u8, 0]))
                         } else {
                             None
                         }
                     })
             })
             .collect()
+    }
+
+    fn entries(&self) -> impl Iterator<Item = (NodeTag, Leaf)> + '_ {
+        self.children.iter().enumerate().flat_map(|(a, first)| {
+            first
+                .children
+                .iter()
+                .enumerate()
+                .flat_map(move |(b, second)| {
+                    second.children.iter().copied().enumerate().filter_map(
+                        move |(c, maybe_leaf)| {
+                            maybe_leaf.map(|leaf| (NodeTag([a as u8, b as u8, c as u8]), leaf))
+                        },
+                    )
+                })
+        })
     }
 }
 
@@ -195,14 +229,46 @@ fn day8_part2(input: &(Vec<Direction>, Box<TagMap>)) -> Result<u64> {
     let mut steps = 0_u64;
     let mut iter = dirs.iter().copied().cycle();
 
-    loop {
-        let dir = iter.next().context("Cycle ended")?;
-        steps += 1;
-    }
+    // loop {
+    //     let dir = iter.next().context("Cycle ended")?;
+    //     steps += 1;
+    // }
 
     Ok(steps)
 }
 
 fn take_step(map: &TagMap, current_tag: NodeTag, direction: Direction) -> Option<NodeTag> {
     map.get(current_tag).map(|leaf| leaf[direction])
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use std::fs::File;
+    use std::io::{BufWriter, Write};
+    use std::path::Path;
+
+    static INPUT: &'static str = include_str!("../input/2023/day8.txt");
+    static THIS_FILE: &'static str = file!();
+
+    #[test]
+    fn generate_dotgraph() -> Result<()> {
+        let path = Path::new(THIS_FILE)
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("output/day8.dot");
+        let mut f = BufWriter::new(File::create(path)?);
+        writeln!(f, "digraph day8 {{")?;
+
+        let (_, map) = day8_gen(INPUT)?;
+        for (tag, leaf) in map.entries() {
+            writeln!(f, "  {} -> {}", tag, leaf.left)?;
+            writeln!(f, "  {} -> {}", tag, leaf.right)?;
+        }
+
+        writeln!(f, "}}")?;
+        Ok(())
+    }
 }
