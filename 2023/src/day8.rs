@@ -138,27 +138,24 @@ impl TagMap {
         second.children[tag.0[2] as usize]
     }
 
-    fn list_part2_nodes(&self) -> Vec<NodeTag> {
-        self.children
-            .iter()
-            .enumerate()
-            .flat_map(|(a, first)| {
-                first
-                    .children
-                    .iter()
-                    .enumerate()
-                    .filter_map(move |(b, second)| {
-                        if second.children[0].is_some() {
-                            Some(NodeTag([a as u8, b as u8, 0]))
-                        } else {
-                            None
-                        }
-                    })
-            })
-            .collect()
+    fn list_part2_nodes(&self) -> impl Iterator<Item = NodeTag> + use<'_> {
+        self.children.iter().enumerate().flat_map(|(a, first)| {
+            first
+                .children
+                .iter()
+                .enumerate()
+                .filter_map(move |(b, second)| {
+                    if second.children[0].is_some() {
+                        Some(NodeTag([a as u8, b as u8, 0]))
+                    } else {
+                        None
+                    }
+                })
+        })
     }
 
-    fn entries(&self) -> impl Iterator<Item = (NodeTag, Leaf)> + '_ {
+    #[allow(unused)]
+    fn entries(&self) -> impl Iterator<Item = (NodeTag, Leaf)> + use<'_> {
         self.children.iter().enumerate().flat_map(|(a, first)| {
             first
                 .children
@@ -222,23 +219,48 @@ fn day8_part1(input: &(Vec<Direction>, Box<TagMap>)) -> Result<u64> {
 fn day8_part2(input: &(Vec<Direction>, Box<TagMap>)) -> Result<u64> {
     let (dirs, map) = input;
 
-    let mut current_nodes = map.list_part2_nodes();
-    if current_nodes.len() == 0 {
-        return Err(Error::msg("No valid starting nodes"));
+    let res = map
+        .list_part2_nodes()
+        .map(|mut node| {
+            let mut steps = 0_u64;
+            let mut dir_iter = dirs.iter().copied().cycle();
+            while node.0[2] != b'Z' - b'A' {
+                steps += 1;
+                node = take_step(map, node, &mut dir_iter)?;
+            }
+            Ok::<u64, Error>(steps)
+        })
+        .try_fold(0, |a, b| if a == 0 { b } else { Ok(lcm(a, b?)) })?;
+    if res == 0 {
+        Err(Error::msg("No starting tags given"))
+    } else {
+        Ok(res)
     }
-    let mut steps = 0_u64;
-    let mut iter = dirs.iter().copied().cycle();
-
-    // loop {
-    //     let dir = iter.next().context("Cycle ended")?;
-    //     steps += 1;
-    // }
-
-    Ok(steps)
 }
 
-fn take_step(map: &TagMap, current_tag: NodeTag, direction: Direction) -> Option<NodeTag> {
-    map.get(current_tag).map(|leaf| leaf[direction])
+fn take_step(
+    map: &TagMap,
+    current_tag: NodeTag,
+    direction: &mut impl Iterator<Item = Direction>,
+) -> Result<NodeTag> {
+    map.get(current_tag)
+        .context("Missing a tag")
+        .and_then(|leaf| Ok(leaf[direction.next().context("direction iter empty")?]))
+}
+
+fn lcm(a: u64, b: u64) -> u64 {
+    let gcd = gcd(a, b);
+    a * (b / gcd)
+}
+
+fn gcd(a: u64, b: u64) -> u64 {
+    let mut big = a.max(b);
+    let mut small = a.min(b);
+    while small > 0 {
+        big = big.rem_euclid(small);
+        std::mem::swap(&mut big, &mut small);
+    }
+    big
 }
 
 #[cfg(test)]
@@ -269,6 +291,36 @@ mod test {
         }
 
         writeln!(f, "}}")?;
+        Ok(())
+    }
+
+    #[test]
+    fn get_phase_and_interval() -> Result<()> {
+        let (dirs, map) = day8_gen(INPUT)?;
+        let starting_nodes = map.list_part2_nodes();
+
+        for start in starting_nodes {
+            let mut phase = 0;
+            let mut current = start;
+            let mut iter = dirs.iter().copied().cycle();
+            loop {
+                phase += 1;
+                current = take_step(&map, current, &mut iter)?;
+                if current.0[2] == b'Z' - b'A' {
+                    break;
+                }
+            }
+            let mut interval = 0;
+            loop {
+                interval += 1;
+                current = take_step(&map, current, &mut iter)?;
+                if current.0[2] == b'Z' - b'A' {
+                    break;
+                }
+            }
+            println!("Start {} has interval {}, phase {}", start, interval, phase);
+        }
+
         Ok(())
     }
 }
