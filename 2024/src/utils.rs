@@ -19,8 +19,7 @@ pub type StrIResult<'a, T> = IResult<&'a str, T, VerboseError<&'a str>>;
 
 pub fn run_parse<'a, O, P>(input: &'a str, mut parser: P) -> Result<O>
 where
-    P: Parser<&'a str, Output = O>,
-    <P as Parser<&'a str>>::Error: std::fmt::Debug,
+    P: Parser<&'a str, Output = O, Error = VerboseError<&'a str>>,
 {
     parser
         .parse_complete(input)
