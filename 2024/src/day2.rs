@@ -1,4 +1,5 @@
 use crate::utils::*;
+use coz::scope;
 use nom::{
     character::complete::{i16, space0},
     combinator::iterator,
@@ -7,7 +8,8 @@ use nom::{
 };
 
 #[aoc(day2, part1)]
-fn part1(input: &str) -> usize {
+pub fn part1(input: &str) -> usize {
+    scope!("part1");
     input
         .lines()
         .filter(|&line| {
@@ -29,7 +31,8 @@ fn part1(input: &str) -> usize {
 }
 
 #[aoc(day2, part2)]
-fn part2(input: &str) -> usize {
+pub fn part2(input: &str) -> usize {
+    scope!("part2");
     input
         .lines()
         .filter(|&line| {
