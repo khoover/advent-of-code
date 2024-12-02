@@ -4,6 +4,8 @@ use nom::{
     character::complete::{space1, u32},
     sequence::separated_pair,
 };
+use radsort::sort;
+use rdxsort::RdxSort;
 
 #[aoc(day1, part1)]
 pub fn part1(input: &str) -> u64 {
@@ -14,6 +16,36 @@ pub fn part1(input: &str) -> u64 {
 
     left.sort_unstable();
     right.sort_unstable();
+    left.into_iter()
+        .zip(right)
+        .map(|(a, b)| a.abs_diff(b) as u64)
+        .sum()
+}
+
+#[aoc(day1, part1, Rdxsort)]
+pub fn part1_rdx(input: &str) -> u64 {
+    let (mut left, mut right): (Vec<_>, Vec<_>) = input
+        .lines()
+        .map(|line| run_parse(line, separated_pair(u32, space1, u32)).unwrap())
+        .unzip();
+
+    left.rdxsort();
+    right.rdxsort();
+    left.into_iter()
+        .zip(right)
+        .map(|(a, b)| a.abs_diff(b) as u64)
+        .sum()
+}
+
+#[aoc(day1, part1, Radsort)]
+pub fn part1_rad(input: &str) -> u64 {
+    let (mut left, mut right): (Vec<_>, Vec<_>) = input
+        .lines()
+        .map(|line| run_parse(line, separated_pair(u32, space1, u32)).unwrap())
+        .unzip();
+
+    sort(&mut left);
+    sort(&mut right);
     left.into_iter()
         .zip(right)
         .map(|(a, b)| a.abs_diff(b) as u64)
