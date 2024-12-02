@@ -1,4 +1,5 @@
 use anyhow::{Error, Result};
+pub use aoc_runner_derive::{aoc, aoc_generator};
 use nom::{
     character::complete::space0,
     error::{ParseError, VerboseError},
