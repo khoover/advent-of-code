@@ -233,11 +233,13 @@ fn opt_filter_fn(line: &str) -> bool {
 
         if (1..=3).contains(&second_inner.abs()) {
             // second diff has to be in range, since we're assuming first is dropped, i.e. no more combos.
-            v.push(Part2State {
-                prev: None,
-                curr: second_diff,
-                can_drop: false,
-            });
+            unsafe {
+                v.push_unchecked(Part2State {
+                    prev: None,
+                    curr: second_diff,
+                    can_drop: false,
+                })
+            };
         }
 
         v
@@ -267,6 +269,7 @@ struct Part2State {
 }
 
 impl Part2State {
+    #[inline(always)]
     fn process(self, next: Option<i16>, out: &mut ArrayVec<Part2State, 3>) {
         let Self {
             prev,
@@ -274,31 +277,48 @@ impl Part2State {
             can_drop,
         } = self;
         if check_diff_pair(prev, curr) && check_legal_range(curr) {
-            out.push(Part2State {
-                prev: curr,
-                curr: next,
-                can_drop,
-            });
+            unsafe {
+                out.push_unchecked(Part2State {
+                    prev: curr,
+                    curr: next,
+                    can_drop,
+                })
+            };
         } else if can_drop {
-            let prev_curr_combo = combine_diffs(prev, curr);
-            if check_diff_pair(prev_curr_combo, next)
-                && check_legal_range(prev_curr_combo)
-                && check_legal_range(next)
-            {
-                out.push(Part2State {
+            Self::cold_process(prev, curr, next, out);
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn cold_process(
+        prev: Option<i16>,
+        curr: Option<i16>,
+        next: Option<i16>,
+        out: &mut ArrayVec<Part2State, 3>,
+    ) {
+        let prev_curr_combo = combine_diffs(prev, curr);
+        if check_diff_pair(prev_curr_combo, next)
+            && check_legal_range(prev_curr_combo)
+            && check_legal_range(next)
+        {
+            unsafe {
+                out.push_unchecked(Part2State {
                     prev: prev_curr_combo,
                     curr: next,
                     can_drop: false,
-                });
-            }
-            let curr_next_combo = combine_diffs(curr, next);
-            if check_diff_pair(prev, curr_next_combo) && check_legal_range(curr_next_combo) {
-                out.push(Part2State {
+                })
+            };
+        }
+        let curr_next_combo = combine_diffs(curr, next);
+        if check_diff_pair(prev, curr_next_combo) && check_legal_range(curr_next_combo) {
+            unsafe {
+                out.push_unchecked(Part2State {
                     prev,
                     curr: curr_next_combo,
                     can_drop: false,
-                });
-            }
+                })
+            };
         }
     }
 }
