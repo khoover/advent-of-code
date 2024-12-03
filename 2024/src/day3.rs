@@ -21,6 +21,76 @@ fn parse_3(s: &str) -> u32 {
         .unwrap()
 }
 
+#[aoc(day3, part1, Opt)]
+pub fn part1(s: &str) -> u32 {
+    let input = s.as_bytes();
+    let mut i = 0;
+    let mut sum = 0;
+    while i < input.len() - 8 {
+        if unsafe { *input.get_unchecked(i) } == b'm' {
+            let (res, next_i) = unsafe { match_mul(i, input) };
+            if let Some(v) = res {
+                sum += v;
+            }
+            i = next_i;
+        } else {
+            i += 1;
+        }
+    }
+    sum
+}
+
+/// # SAFETY
+/// m_index < input.len() - 7
+unsafe fn match_mul(m_index: usize, input: &[u8]) -> (Option<u32>, usize) {
+    let mut a: u32 = match unsafe { input.get_unchecked(m_index + 1..m_index + 5) } {
+        [b'u', b'l', b'(', d] if d.is_ascii_digit() => *d - b'0',
+        [b'u', b'l', b'(', _] => {
+            return (None, m_index + 4);
+        }
+        [b'u', b'l', _, _] => {
+            return (None, m_index + 3);
+        }
+        [b'u', _, _, _] => {
+            return (None, m_index + 2);
+        }
+        _ => {
+            return (None, m_index + 1);
+        }
+    } as u32;
+    let mut i = m_index + 5;
+    if unsafe { input.get_unchecked(i) }.is_ascii_digit() {
+        a = a * 10 + (input[i] - b'0') as u32;
+        i += 1;
+    }
+    if unsafe { input.get_unchecked(i) }.is_ascii_digit() {
+        a = a * 10 + (input[i] - b'0') as u32;
+        i += 1;
+    }
+    // i <= m_index + 7 < input.len()
+    if unsafe { *input.get_unchecked(i) } != b',' {
+        return (None, i);
+    }
+    let Some(d) = input.get(i + 1).filter(|d| d.is_ascii_digit()) else {
+        return (None, i + 1);
+    };
+    let mut b = (*d - b'0') as u32;
+    if let Some(d) = input.get(i + 2).filter(|d| d.is_ascii_digit()) {
+        b = b * 10 + (d - b'0') as u32;
+        if let Some(d) = input.get(i + 3).filter(|d| d.is_ascii_digit()) {
+            b = b * 10 + (d - b'0') as u32;
+            i += 2;
+        } else {
+            i += 1;
+        }
+    }
+    if matches!(input.get(i + 2), Some(b')')) {
+        (Some(a * b), i + 3)
+    } else {
+        (None, i + 2)
+    }
+}
+
 #[aoc(day3, part2, Naive)]
 pub fn part2_naive(input: &str) -> u32 {
     let regex = Regex::new(r"do\(\)|don't\(\)|mul\((?<a>[0-9]{1,3}),(?<b>[0-9]{1,3})\)").unwrap();
@@ -43,4 +113,62 @@ pub fn part2_naive(input: &str) -> u32 {
             }
         })
         .sum()
+}
+
+#[aoc(day3, part2, Opt)]
+pub fn part2(s: &str) -> u32 {
+    let input = s.as_bytes();
+    let mut i = 0;
+    let mut sum = 0;
+    let mut enabled = true;
+    while i < input.len() - 8 {
+        let c = unsafe { *input.get_unchecked(i) };
+        if c == b'm' && enabled {
+            let (res, next_i) = unsafe { match_mul(i, input) };
+            if let Some(v) = res {
+                sum += v;
+            }
+            i = next_i;
+        } else if c == b'd' {
+            let (res, next_i) = unsafe { match_do_dont(i, input) };
+            if let Some(b) = res {
+                enabled = b;
+            }
+            i = next_i;
+        } else {
+            i += 1;
+        }
+    }
+    sum
+}
+
+/// # Safety
+/// d_index < input.len() - 7
+unsafe fn match_do_dont(d_index: usize, input: &[u8]) -> (Option<bool>, usize) {
+    const DO: u64 = 0x64_6F_28_29_00000000_u64.swap_bytes();
+    const DONT: u64 = 0x64_6F_6E_27_74_28_29_00_u64.swap_bytes();
+    let loaded = u64::from_le_bytes(unsafe {
+        [
+            *input.get_unchecked(d_index),
+            *input.get_unchecked(d_index + 1),
+            *input.get_unchecked(d_index + 2),
+            *input.get_unchecked(d_index + 3),
+            *input.get_unchecked(d_index + 4),
+            *input.get_unchecked(d_index + 5),
+            *input.get_unchecked(d_index + 6),
+            0,
+        ]
+    });
+    let do_input_diff = loaded.wrapping_sub(DO).trailing_zeros();
+    let dont_input_diff = loaded.wrapping_sub(DONT);
+    if dont_input_diff == 0 {
+        (Some(false), d_index + 7)
+    } else if do_input_diff >= 4 * 8 {
+        (Some(true), d_index + 4)
+    } else {
+        (
+            None,
+            d_index + (do_input_diff.min(dont_input_diff.trailing_zeros()) as usize >> 3),
+        )
+    }
 }
