@@ -90,13 +90,13 @@ fn check_line(input: &[u8]) -> (bool, &[u8]) {
         if stop_iter {
             return None;
         }
-        let mut acc = input[idx] - b'0';
+        let mut acc = unsafe { *input.get_unchecked(idx) } - b'0';
         idx += 1;
         if idx == input.len() {
             stop_iter = true;
             return Some(acc as i16);
         } else {
-            match input[idx] {
+            match unsafe { *input.get_unchecked(idx) } {
                 b'\n' => {
                     stop_iter = true;
                     idx += 1;
@@ -362,13 +362,13 @@ fn check_line_part2(input: &[u8]) -> (bool, &[u8]) {
         if stop_iter {
             return None;
         }
-        let mut acc = input[idx] - b'0';
+        let mut acc = unsafe { *input.get_unchecked(idx) - b'0' };
         idx += 1;
         if idx == input.len() {
             stop_iter = true;
             return Some(acc as i16);
         } else {
-            match input[idx] {
+            match unsafe { *input.get_unchecked(idx) } {
                 b'\n' => {
                     stop_iter = true;
                     idx += 1;
@@ -405,7 +405,7 @@ fn check_line_part2(input: &[u8]) -> (bool, &[u8]) {
             *prev_value = next_value;
             Some(res)
         })
-        .chain(Some(None));
+        .chain(std::iter::once(None));
     let first_diff = unsafe { diffs.next().unwrap_unchecked() };
     let second_diff = unsafe { diffs.next().unwrap_unchecked() };
 
