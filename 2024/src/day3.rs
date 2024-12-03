@@ -26,7 +26,7 @@ pub fn part1(s: &str) -> u32 {
     let input = s.as_bytes();
     let mut i = 0;
     let mut sum = 0;
-    while i < input.len() - 8 {
+    while i < input.len() - 7 {
         if unsafe { *input.get_unchecked(i) } == b'm' {
             let (res, next_i) = unsafe { match_mul(i, input) };
             if let Some(v) = res {
@@ -43,21 +43,29 @@ pub fn part1(s: &str) -> u32 {
 /// # SAFETY
 /// m_index < input.len() - 7
 unsafe fn match_mul(m_index: usize, input: &[u8]) -> (Option<u32>, usize) {
-    let mut a: u32 = match unsafe { input.get_unchecked(m_index + 1..m_index + 5) } {
-        [b'u', b'l', b'(', d] if d.is_ascii_digit() => *d - b'0',
-        [b'u', b'l', b'(', _] => {
+    const MUL: u32 = 0x6D_75_6C_28_u32.swap_bytes();
+    let loaded = u32::from_le_bytes(unsafe {
+        [
+            *input.get_unchecked(m_index),
+            *input.get_unchecked(m_index + 1),
+            *input.get_unchecked(m_index + 2),
+            *input.get_unchecked(m_index + 3),
+        ]
+    });
+    let diff = loaded.wrapping_sub(MUL);
+    if diff != 0 {
+        return (None, m_index + (diff.trailing_zeros() as usize >> 3));
+    }
+
+    let mut a = {
+        let d = *input.get_unchecked(m_index + 4);
+        if !d.is_ascii_digit() {
             return (None, m_index + 4);
-        }
-        [b'u', b'l', _, _] => {
-            return (None, m_index + 3);
-        }
-        [b'u', _, _, _] => {
-            return (None, m_index + 2);
-        }
-        _ => {
-            return (None, m_index + 1);
+        } else {
+            d - b'0'
         }
     } as u32;
+
     let mut i = m_index + 5;
     if unsafe { input.get_unchecked(i) }.is_ascii_digit() {
         a = a * 10 + (input[i] - b'0') as u32;
@@ -121,7 +129,7 @@ pub fn part2(s: &str) -> u32 {
     let mut i = 0;
     let mut sum = 0;
     let mut enabled = true;
-    while i < input.len() - 8 {
+    while i < input.len() - 7 {
         let c = unsafe { *input.get_unchecked(i) };
         if c == b'm' && enabled {
             let (res, next_i) = unsafe { match_mul(i, input) };
@@ -148,27 +156,21 @@ unsafe fn match_do_dont(d_index: usize, input: &[u8]) -> (Option<bool>, usize) {
     const DO: u64 = 0x64_6F_28_29_00000000_u64.swap_bytes();
     const DONT: u64 = 0x64_6F_6E_27_74_28_29_00_u64.swap_bytes();
     let loaded = u64::from_le_bytes(unsafe {
-        [
-            *input.get_unchecked(d_index),
-            *input.get_unchecked(d_index + 1),
-            *input.get_unchecked(d_index + 2),
-            *input.get_unchecked(d_index + 3),
-            *input.get_unchecked(d_index + 4),
-            *input.get_unchecked(d_index + 5),
-            *input.get_unchecked(d_index + 6),
-            0,
-        ]
+        input
+            .get_unchecked(d_index..d_index + 8)
+            .try_into()
+            .unwrap_unchecked()
     });
     let do_input_diff = loaded.wrapping_sub(DO).trailing_zeros();
-    let dont_input_diff = loaded.wrapping_sub(DONT);
-    if dont_input_diff == 0 {
-        (Some(false), d_index + 7)
-    } else if do_input_diff >= 4 * 8 {
+    let dont_input_diff = loaded.wrapping_sub(DONT).trailing_zeros();
+    if do_input_diff >= 4 * 8 {
         (Some(true), d_index + 4)
+    } else if dont_input_diff >= 7 * 8 {
+        (Some(false), d_index + 7)
     } else {
         (
             None,
-            d_index + (do_input_diff.min(dont_input_diff.trailing_zeros()) as usize >> 3),
+            d_index + (do_input_diff.min(dont_input_diff) as usize >> 3),
         )
     }
 }
