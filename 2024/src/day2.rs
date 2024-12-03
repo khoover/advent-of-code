@@ -354,6 +354,7 @@ pub fn part2(input: &str) -> usize {
     count
 }
 
+#[inline(always)]
 fn check_line_part2(input: &[u8]) -> (bool, &[u8]) {
     let mut idx = 0;
     let mut stop_iter = false;
