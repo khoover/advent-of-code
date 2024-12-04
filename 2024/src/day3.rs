@@ -65,6 +65,9 @@ pub fn part1_opt(s: &str) -> u32 {
 #[aoc(day3, part1, Memchr)]
 pub fn part1(s: &str) -> u32 {
     let input = s.as_bytes();
+    if input.len() < 4 {
+        return 0;
+    }
 
     let mul_finder = FinderBuilder::new()
         .prefilter(Prefilter::Auto)
@@ -72,6 +75,8 @@ pub fn part1(s: &str) -> u32 {
 
     mul_finder
         .find_iter(&input[..input.len() - 4])
+        // SAFETY: "mul(" starts at m_index, and the "(" is at <= input.len() - 5,
+        // so m_index <= input.len() - 8 === m_index < input.len() - 7
         .filter_map(|m_index| unsafe { match_mul_suffix(m_index, input) }.0)
         .sum()
 }
@@ -223,7 +228,9 @@ pub fn part2_memchr(s: &str) -> u32 {
     const DONT_LEN: usize = 7;
 
     let mut input = s.as_bytes();
-    let mut max_search_idx = input.len() - 4;
+    let Some(mut max_search_idx) = input.len().checked_sub(4) else {
+        return 0;
+    };
     let mut sum: u32 = 0;
 
     let mul_finder = FinderBuilder::new()
@@ -237,19 +244,24 @@ pub fn part2_memchr(s: &str) -> u32 {
         .build_forward_with_ranker(Emprical, "do()");
 
     loop {
-        let Some(next_dont) = dont_finder.find(&input[..max_search_idx]) else {
+        let Some(next_dont) = dont_finder.find(unsafe { input.get_unchecked(..max_search_idx) })
+        else {
             return sum
                 + mul_finder
-                    .find_iter(&input[..max_search_idx])
+                    .find_iter(unsafe { input.get_unchecked(..max_search_idx) })
+                    // SAFETY: "mul(" starts at m_index, and the "(" is at <= input.len() - 5,
+                    // so m_index <= input.len() - 8 === m_index < input.len() - 7
                     .filter_map(|m_index| unsafe { match_mul_suffix(m_index, input) }.0)
                     .sum::<u32>();
         };
         sum += mul_finder
-            .find_iter(&input[..next_dont])
+            .find_iter(unsafe { input.get_unchecked(..next_dont) })
+            // SAFETY: "mul(" starts at m_index, and the "(" is at < next_dont < input.len() - 5,
+            // so m_index <= input.len() - 8 === m_index < input.len() - 7
             .filter_map(|m_index| unsafe { match_mul_suffix(m_index, input) }.0)
             .sum::<u32>();
-        if let Some(idx) = do_finder.find(&input[next_dont + DONT_LEN..]) {
-            input = &input[next_dont + DONT_LEN + idx + DO_LEN..];
+        if let Some(idx) = do_finder.find(unsafe { input.get_unchecked(next_dont + DONT_LEN..) }) {
+            input = unsafe { input.get_unchecked(next_dont + DONT_LEN + idx + DO_LEN..) };
             if let Some(max) = input.len().checked_sub(4) {
                 max_search_idx = max;
             } else {
