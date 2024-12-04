@@ -201,6 +201,7 @@ pub fn part2_opt(s: &str) -> u32 {
 /// # Safety
 /// d_index < input.len() - 7
 unsafe fn match_do_dont(d_index: usize, input: &[u8]) -> (Option<bool>, usize) {
+    #[allow(clippy::unusual_byte_groupings)]
     const DO: u64 = 0x64_6F_28_29_00000000_u64.swap_bytes();
     const DONT: u64 = 0x64_6F_6E_27_74_28_29_00_u64.swap_bytes();
     let loaded = u64::from_le_bytes(unsafe {
