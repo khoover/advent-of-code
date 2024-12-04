@@ -71,7 +71,7 @@ pub fn part1(s: &str) -> u32 {
         .build_forward_with_ranker(Emprical, "mul(");
 
     mul_finder
-        .find_iter(&input[..input.len() - 7])
+        .find_iter(&input[..input.len() - 4])
         .filter_map(|m_index| unsafe { match_mul_suffix(m_index, input) }.0)
         .sum()
 }
@@ -166,7 +166,7 @@ pub fn part2_naive(input: &str) -> u32 {
 }
 
 #[aoc(day3, part2, Opt)]
-pub fn part2(s: &str) -> u32 {
+pub fn part2_opt(s: &str) -> u32 {
     let input = s.as_bytes();
     let mut i = 0;
     let mut sum = 0;
@@ -223,7 +223,7 @@ pub fn part2_memchr(s: &str) -> u32 {
     const DONT_LEN: usize = 7;
 
     let mut input = s.as_bytes();
-    let mut max_search_idx = input.len() - 7;
+    let mut max_search_idx = input.len() - 4;
     let mut sum: u32 = 0;
 
     let mul_finder = FinderBuilder::new()
@@ -248,9 +248,9 @@ pub fn part2_memchr(s: &str) -> u32 {
             .find_iter(&input[..next_dont])
             .filter_map(|m_index| unsafe { match_mul_suffix(m_index, input) }.0)
             .sum::<u32>();
-        if let Some(idx) = do_finder.find(&input[next_dont + DONT_LEN..max_search_idx]) {
-            input = &input[idx + DO_LEN..];
-            if let Some(max) = input.len().checked_sub(7) {
+        if let Some(idx) = do_finder.find(&input[next_dont + DONT_LEN..]) {
+            input = &input[next_dont + DONT_LEN + idx + DO_LEN..];
+            if let Some(max) = input.len().checked_sub(4) {
                 max_search_idx = max;
             } else {
                 break;
@@ -261,6 +261,10 @@ pub fn part2_memchr(s: &str) -> u32 {
     }
 
     sum
+}
+
+pub fn part2(s: &str) -> u32 {
+    part2_memchr(s)
 }
 
 #[cfg(test)]
@@ -299,5 +303,15 @@ mod test {
         println!("{:?}", &x[2..2]); // empty is fine
 
         // println!("{:?}", &x[3..2]); // out of bounds
+    }
+
+    #[test]
+    fn part2_memchr_test() {
+        assert_eq!(
+            part2_memchr(
+                "xmul(2,4)&mul[3,7]!^don't()_mul(5,5)+mul(32,64](mul(11,8)undo()?mul(8,5))"
+            ),
+            48
+        );
     }
 }
