@@ -491,7 +491,7 @@ mod test {
 
     #[test]
     fn test_part2_hyper() {
-        assert_eq!(part2_hyper(EXAMPLE), 4);
+        assert_eq!(part2(EXAMPLE), 4);
     }
 
     #[test]
