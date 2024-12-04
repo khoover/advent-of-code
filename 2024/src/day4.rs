@@ -1,7 +1,3 @@
-use std::cell::Cell;
-
-use nom::AsBytes;
-
 use crate::utils::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -210,170 +206,6 @@ fn part2_naive(s: &str) -> usize {
         .count()
 }
 
-#[aoc(day4, part1, Opt)]
-fn part1_opt(s: &str) -> usize {
-    let Some(columns) = s.find("\n") else {
-        return 0;
-    };
-    let mut x_locs = Vec::new();
-    let rows: Cell<usize> = Cell::new(0);
-    let col: Cell<usize> = Cell::new(0);
-    let letters: Vec<u8> = s
-        .as_bytes()
-        .iter()
-        .copied()
-        .filter(|&b| {
-            if b == b'\n' {
-                rows.set(rows.get() + 1);
-                col.set(0);
-                false
-            } else {
-                true
-            }
-        })
-        .map(|b| {
-            let curr_col = col.get();
-            let res = match b {
-                b'X' => {
-                    x_locs.push((rows.get(), curr_col));
-                    0
-                }
-                b'M' => 1,
-                b'A' => 2,
-                b'S' => 3,
-                _ => unreachable!(),
-            };
-            col.set(curr_col + 1);
-            res
-        })
-        .collect();
-    let dims = (rows.get(), columns);
-
-    x_locs
-        .into_iter()
-        //.inspect(|x_loc| println!("{x_loc:?}"))
-        .map(|x_loc| check_x_loc(x_loc, dims, letters.as_bytes()))
-        //.inspect(|v| println!("{v}"))
-        .sum()
-}
-
-macro_rules! add_bools {
-    ($x:expr) => ($x as usize);
-    ($x:expr, $($y:expr),+) => (
-        (($x as usize) + add_bools!($($y),+))
-    )
-}
-
-fn check_x_loc(x_idx: (usize, usize), dims: (usize, usize), letters: &[u8]) -> usize {
-    let columns = dims.1;
-    unsafe {
-        if x_idx.0 < 3 {
-            let base = check_xmas_unchecked(x_idx, (1, 0), columns, letters) as usize;
-            if x_idx.1 < 3 {
-                base + add_bools!(
-                    check_xmas_unchecked(x_idx, (0, 1), columns, letters),
-                    check_xmas_unchecked(x_idx, (1, 1), columns, letters)
-                )
-            } else if x_idx.1 >= columns - 3 {
-                base + add_bools!(
-                    check_xmas_unchecked(x_idx, (0, -1), columns, letters),
-                    check_xmas_unchecked(x_idx, (1, -1), columns, letters)
-                )
-            } else {
-                base + add_bools!(
-                    check_xmas_unchecked(x_idx, (0, 1), columns, letters),
-                    check_xmas_unchecked(x_idx, (1, 1), columns, letters),
-                    check_xmas_unchecked(x_idx, (0, -1), columns, letters),
-                    check_xmas_unchecked(x_idx, (1, -1), columns, letters)
-                )
-            }
-        } else if x_idx.0 + 3 >= dims.0 {
-            let base = check_xmas_unchecked(x_idx, (-1, 0), columns, letters) as usize;
-            if x_idx.1 < 3 {
-                base + add_bools!(
-                    check_xmas_unchecked(x_idx, (0, 1), columns, letters),
-                    check_xmas_unchecked(x_idx, (-1, 1), columns, letters)
-                )
-            } else if x_idx.1 + 3 >= columns {
-                base + add_bools!(
-                    check_xmas_unchecked(x_idx, (0, -1), columns, letters),
-                    check_xmas_unchecked(x_idx, (-1, -1), columns, letters)
-                )
-            } else {
-                base + add_bools!(
-                    check_xmas_unchecked(x_idx, (0, 1), columns, letters),
-                    check_xmas_unchecked(x_idx, (-1, 1), columns, letters),
-                    check_xmas_unchecked(x_idx, (0, -1), columns, letters),
-                    check_xmas_unchecked(x_idx, (-1, -1), columns, letters)
-                )
-            }
-        } else {
-            let base = add_bools!(
-                check_xmas_unchecked(x_idx, (1, 0), columns, letters),
-                check_xmas_unchecked(x_idx, (-1, 0), columns, letters)
-            );
-            if x_idx.1 < 3 {
-                base + add_bools!(
-                    check_xmas_unchecked(x_idx, (0, 1), columns, letters),
-                    check_xmas_unchecked(x_idx, (-1, 1), columns, letters),
-                    check_xmas_unchecked(x_idx, (1, 1), columns, letters)
-                )
-            } else if x_idx.1 + 3 >= columns {
-                base + add_bools!(
-                    check_xmas_unchecked(x_idx, (0, -1), columns, letters),
-                    check_xmas_unchecked(x_idx, (-1, -1), columns, letters),
-                    check_xmas_unchecked(x_idx, (1, -1), columns, letters)
-                )
-            } else {
-                base + add_bools!(
-                    check_xmas_unchecked(x_idx, (0, 1), columns, letters),
-                    check_xmas_unchecked(x_idx, (-1, 1), columns, letters),
-                    check_xmas_unchecked(x_idx, (0, -1), columns, letters),
-                    check_xmas_unchecked(x_idx, (-1, -1), columns, letters),
-                    check_xmas_unchecked(x_idx, (1, 1), columns, letters),
-                    check_xmas_unchecked(x_idx, (1, -1), columns, letters)
-                )
-            }
-        }
-    }
-}
-
-/// # Safety
-/// x_idx + offset * 3 must be within the bounds of the letters grid
-pub unsafe fn check_xmas_unchecked(
-    x_idx: (usize, usize),
-    offset: (isize, isize),
-    columns: usize,
-    letters: &[u8],
-) -> bool {
-    let mut index = unsafe { x_idx.0.unchecked_mul(columns).unchecked_add(x_idx.1) };
-    let delta = unsafe {
-        offset
-            .0
-            .unchecked_mul(columns as isize)
-            .unchecked_add(offset.1)
-    };
-    (1..=3)
-        .map(|mult| {
-            // SAFETY: x_idx + offset * 3 is within the bounds of the grid
-            (mult
-                == unsafe {
-                    index = index.wrapping_add_signed(delta);
-                    *letters.get_unchecked(index)
-                }
-                .into()) as u8
-        })
-        .sum::<u8>()
-        == 3
-    // (1..=3).all(|mult| {
-    //     mult == unsafe {
-    //         index = index.wrapping_add_signed(delta);
-    //         *letters.get_unchecked(index)
-    //     }
-    //     .into()
-    // })
-}
-
 #[aoc(day4, part1, Simd)]
 fn part1_simd(s: &str) -> usize {
     let input = s.as_bytes();
@@ -520,11 +352,6 @@ fn part2_simd(s: &str) -> usize {
     };
     let stride = unsafe { columns.unchecked_add(1) };
     let end_bound = input.len() - 2 * stride - 2;
-    let remainder_start = {
-        #[allow(clippy::modulo_one)]
-        let remainder_len = end_bound % PART2_FAST;
-        end_bound - remainder_len
-    };
     let mut sum = 0;
 
     let top_right_offset = 2;
@@ -695,16 +522,6 @@ MXMXAXMASX";
     #[test]
     fn test_part2_naive_mine() {
         assert_eq!(part2_naive(MY_INPUT), MY_PART2_EXPECTED);
-    }
-
-    #[test]
-    fn test_part1_opt_site() {
-        assert_eq!(part1_opt(SITE_INPUT), SITE_PART1_EXPECTED);
-    }
-
-    #[test]
-    fn test_part1_opt_mine() {
-        assert_eq!(part1_opt(MY_INPUT), MY_PART1_EXPECTED);
     }
 
     #[test]
