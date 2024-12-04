@@ -103,6 +103,7 @@ unsafe fn match_mul(m_index: usize, input: &[u8]) -> (Option<u32>, usize) {
 
 /// # SAFETY
 /// m_index < input.len() - 7
+#[inline(always)]
 unsafe fn match_mul_suffix(m_index: usize, input: &[u8]) -> (Option<u32>, usize) {
     let mut a = {
         let d = *input.get_unchecked(m_index + 4);
