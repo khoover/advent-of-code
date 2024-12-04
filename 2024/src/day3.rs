@@ -1,5 +1,27 @@
 use crate::utils::*;
+use memchr::arch::all::packedpair::HeuristicFrequencyRank;
+use memchr::memmem::{FinderBuilder, Prefilter};
 use regex::Regex;
+
+struct Emprical;
+
+impl HeuristicFrequencyRank for Emprical {
+    fn rank(&self, byte: u8) -> u8 {
+        const TABLE: [u8; 256] = [
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 16, 17, 0, 15, 13, 15, 17, 20, 227, 221, 15, 16, 112, 16, 0, 15, 39, 58, 54,
+            61, 61, 60, 63, 62, 57, 64, 17, 14, 17, 0, 15, 15, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 18, 0, 15, 16, 0, 0, 15, 1, 14, 9, 68, 15,
+            0, 87, 1, 0, 0, 103, 104, 18, 55, 1, 0, 29, 14, 33, 90, 0, 87, 0, 14, 0, 16, 0, 15, 15,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        ];
+        TABLE[byte as usize]
+    }
+}
 
 #[aoc(day3, part1, Naive)]
 pub fn part1_naive(input: &str) -> u32 {
@@ -22,7 +44,7 @@ fn parse_3(s: &str) -> u32 {
 }
 
 #[aoc(day3, part1, Opt)]
-pub fn part1(s: &str) -> u32 {
+pub fn part1_opt(s: &str) -> u32 {
     let input = s.as_bytes();
     let mut i = 0;
     let mut sum = 0;
@@ -38,6 +60,20 @@ pub fn part1(s: &str) -> u32 {
         }
     }
     sum
+}
+
+#[aoc(day3, part1, Memchr)]
+pub fn part1(s: &str) -> u32 {
+    let input = s.as_bytes();
+
+    let mul_finder = FinderBuilder::new()
+        .prefilter(Prefilter::Auto)
+        .build_forward_with_ranker(Emprical, "mul(");
+
+    mul_finder
+        .find_iter(&input[..input.len() - 7])
+        .filter_map(|m_index| unsafe { match_mul_suffix(m_index, input) }.0)
+        .sum()
 }
 
 /// # SAFETY
@@ -57,6 +93,12 @@ unsafe fn match_mul(m_index: usize, input: &[u8]) -> (Option<u32>, usize) {
         return (None, m_index + (diff.trailing_zeros() as usize >> 3));
     }
 
+    match_mul_suffix(m_index, input)
+}
+
+/// # SAFETY
+/// m_index < input.len() - 7
+unsafe fn match_mul_suffix(m_index: usize, input: &[u8]) -> (Option<u32>, usize) {
     let mut a = {
         let d = *input.get_unchecked(m_index + 4);
         if !d.is_ascii_digit() {
@@ -172,5 +214,90 @@ unsafe fn match_do_dont(d_index: usize, input: &[u8]) -> (Option<bool>, usize) {
             None,
             d_index + (do_input_diff.min(dont_input_diff) as usize >> 3),
         )
+    }
+}
+
+#[aoc(day3, part2, Memchr)]
+pub fn part2_memchr(s: &str) -> u32 {
+    const DO_LEN: usize = 4;
+    const DONT_LEN: usize = 7;
+
+    let mut input = s.as_bytes();
+    let mut max_search_idx = input.len() - 7;
+    let mut sum: u32 = 0;
+
+    let mul_finder = FinderBuilder::new()
+        .prefilter(Prefilter::Auto)
+        .build_forward_with_ranker(Emprical, "mul(");
+    let dont_finder = FinderBuilder::new()
+        .prefilter(Prefilter::Auto)
+        .build_forward_with_ranker(Emprical, "don't()");
+    let do_finder = FinderBuilder::new()
+        .prefilter(Prefilter::Auto)
+        .build_forward_with_ranker(Emprical, "do()");
+
+    loop {
+        let Some(next_dont) = dont_finder.find(&input[..max_search_idx]) else {
+            return sum
+                + mul_finder
+                    .find_iter(&input[..max_search_idx])
+                    .filter_map(|m_index| unsafe { match_mul_suffix(m_index, input) }.0)
+                    .sum::<u32>();
+        };
+        sum += mul_finder
+            .find_iter(&input[..next_dont])
+            .filter_map(|m_index| unsafe { match_mul_suffix(m_index, input) }.0)
+            .sum::<u32>();
+        if let Some(idx) = do_finder.find(&input[next_dont + DONT_LEN..max_search_idx]) {
+            input = &input[idx + DO_LEN..];
+            if let Some(max) = input.len().checked_sub(7) {
+                max_search_idx = max;
+            } else {
+                break;
+            }
+        } else {
+            break;
+        };
+    }
+
+    sum
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    static INPUT: &'static str = include_str!("../input/2024/day3.txt");
+
+    #[test]
+    fn generate_frequencies() {
+        let mut table = [0_u32; 256];
+        for byte in INPUT.as_bytes() {
+            table[*byte as usize] += 1;
+        }
+        let min = table.iter().copied().filter(|x| *x != 0).min().unwrap();
+        let max = table.iter().copied().max().unwrap();
+        let scaling_factor = (max - min).div_ceil(256);
+        println!("{scaling_factor}");
+        print!("const TABLE: [u8; 256] = [");
+        for entry in table {
+            print!(
+                "{}, ",
+                entry
+                    .checked_sub(min - 1)
+                    .unwrap_or_default()
+                    .div_ceil(scaling_factor)
+            );
+        }
+        println!("];");
+    }
+
+    #[test]
+    fn intuition_check() {
+        let x = [1, 2, 3];
+        println!("{:?}", &x[..2]);
+        println!("{:?}", &x[2..2]); // empty is fine
+
+        // println!("{:?}", &x[3..2]); // out of bounds
     }
 }
