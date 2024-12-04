@@ -500,7 +500,7 @@ fn check_columns_simd(x_row: &[u8; 3], m_row: &[u8; 3], a_row: &[u8; 3], s_row: 
         .count()
 }
 
-const PART2_FAST: usize = 1;
+const PART2_FAST: usize = 16;
 const A: u8 = b'A';
 const M: u8 = b'M';
 const S: u8 = b'S';
@@ -518,74 +518,71 @@ fn part2_simd(s: &str) -> usize {
     else {
         return 0;
     };
-    let usable_columns = columns - 2;
-
+    let stride = unsafe { columns.unchecked_add(1) };
+    let end_bound = input.len() - 2 * stride - 2;
     let remainder_start = {
         #[allow(clippy::modulo_one)]
-        let remainder_len = usable_columns % PART2_FAST;
-        usable_columns - remainder_len
+        let remainder_len = end_bound % PART2_FAST;
+        end_bound - remainder_len
     };
-    let stride = unsafe { columns.unchecked_add(1) };
-    let rows = (input.len() + 1) / stride;
     let mut sum = 0;
 
-    for row_offset in (0..rows - 2).map(|x| x * stride) {
-        let top_left_offset = row_offset;
-        let top_right_offset = row_offset + 2;
-        let a_offset = row_offset + stride + 1;
-        let bottom_left_offset = row_offset + 2 * stride;
-        let bottom_right_offset = row_offset + 2 * stride + 2;
+    let top_right_offset = 2;
+    let a_offset = stride + 1;
+    let bottom_left_offset = 2 * stride;
+    let bottom_right_offset = 2 * stride + 2;
+    let mut top_left_offset = 0;
 
-        (0..columns - PART2_FAST)
-            .step_by(PART2_FAST)
-            .for_each(|offset| {
-                sum += unsafe {
-                    part2_fast_check(
-                        input
-                            .get_unchecked(
-                                top_left_offset + offset..top_left_offset + offset + PART2_FAST,
-                            )
-                            .try_into()
-                            .unwrap_unchecked(),
-                        input
-                            .get_unchecked(
-                                top_right_offset + offset..top_right_offset + offset + PART2_FAST,
-                            )
-                            .try_into()
-                            .unwrap_unchecked(),
-                        input
-                            .get_unchecked(
-                                bottom_left_offset + offset
-                                    ..bottom_left_offset + offset + PART2_FAST,
-                            )
-                            .try_into()
-                            .unwrap_unchecked(),
-                        input
-                            .get_unchecked(
-                                bottom_right_offset + offset
-                                    ..bottom_right_offset + offset + PART2_FAST,
-                            )
-                            .try_into()
-                            .unwrap_unchecked(),
-                        input
-                            .get_unchecked(a_offset + offset..a_offset + offset + PART2_FAST)
-                            .try_into()
-                            .unwrap_unchecked(),
+    while top_left_offset < end_bound - PART2_FAST {
+        sum += unsafe {
+            part2_fast_check(
+                input
+                    .get_unchecked(top_left_offset..top_left_offset + PART2_FAST)
+                    .try_into()
+                    .unwrap_unchecked(),
+                input
+                    .get_unchecked(
+                        top_right_offset + top_left_offset
+                            ..top_right_offset + top_left_offset + PART2_FAST,
                     )
-                };
-            });
+                    .try_into()
+                    .unwrap_unchecked(),
+                input
+                    .get_unchecked(
+                        bottom_left_offset + top_left_offset
+                            ..bottom_left_offset + top_left_offset + PART2_FAST,
+                    )
+                    .try_into()
+                    .unwrap_unchecked(),
+                input
+                    .get_unchecked(
+                        bottom_right_offset + top_left_offset
+                            ..bottom_right_offset + top_left_offset + PART2_FAST,
+                    )
+                    .try_into()
+                    .unwrap_unchecked(),
+                input
+                    .get_unchecked(
+                        a_offset + top_left_offset..a_offset + top_left_offset + PART2_FAST,
+                    )
+                    .try_into()
+                    .unwrap_unchecked(),
+            )
+        };
+        top_left_offset += PART2_FAST;
+    }
 
-        (remainder_start..usable_columns).for_each(|offset| {
-            let top_left = unsafe { *input.get_unchecked(top_left_offset + offset) };
-            let top_right = unsafe { *input.get_unchecked(top_right_offset + offset) };
-            let bottom_left = unsafe { *input.get_unchecked(bottom_left_offset + offset) };
-            let bottom_right = unsafe { *input.get_unchecked(bottom_right_offset + offset) };
-            let center = unsafe { *input.get_unchecked(a_offset + offset) };
-            sum += ((center == A)
-                && ((top_left == M && bottom_right == S) || (top_left == S && bottom_right == M))
-                && ((top_right == M && bottom_left == S) || (top_right == S && bottom_left == M)))
-                as usize;
-        })
+    while top_left_offset < end_bound {
+        let top_left = unsafe { *input.get_unchecked(top_left_offset) };
+        let top_right = unsafe { *input.get_unchecked(top_right_offset + top_left_offset) };
+        let bottom_left = unsafe { *input.get_unchecked(bottom_left_offset + top_left_offset) };
+        let bottom_right = unsafe { *input.get_unchecked(bottom_right_offset + top_left_offset) };
+        let center = unsafe { *input.get_unchecked(a_offset + top_left_offset) };
+        sum += ((center == A)
+            && ((top_left == M && bottom_right == S) || (top_left == S && bottom_right == M))
+            && ((top_right == M && bottom_left == S) || (top_right == S && bottom_left == M)))
+            as usize;
+        top_left_offset += 1;
     }
 
     sum
