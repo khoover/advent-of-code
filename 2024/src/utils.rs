@@ -28,3 +28,24 @@ where
         .map(|(_, x)| x)
         .map_err(|e| Error::msg(format!("Failed to parse input:\n{e:#?}")))
 }
+
+macro_rules! debug {
+    ($x:tt) => { debug!(@ $x, $x);};
+    (hex $x:tt) => { debug!(@x $x, $x);};
+    (@ $xi:ident, $xe:expr) => {
+        #[cfg(debug_assertions)]
+        {
+            print!(stringify!($xi));
+            println!("={:?}", $xe);
+        }
+    };
+    (@x $xi:ident, $xe:expr) => {
+        #[cfg(debug_assertions)]
+        {
+            print!(stringify!($xi));
+            println!("={:x?}", $xe);
+        }
+    }
+}
+
+pub(crate) use debug;
