@@ -49,3 +49,30 @@ macro_rules! debug {
 }
 
 pub(crate) use debug;
+
+#[inline(always)]
+pub fn arr_eq<T: PartialEq, const N: usize>(arr: &[T; N], c: T) -> [bool; N] {
+    let mut out = [false; N];
+    for i in 0..N {
+        out[i] = arr[i] == c;
+    }
+    out
+}
+
+#[inline(always)]
+pub fn arr_and<const N: usize>(a: [bool; N], b: [bool; N]) -> [bool; N] {
+    let mut out = [false; N];
+    for i in 0..N {
+        out[i] = a[i] & b[i];
+    }
+    out
+}
+
+#[inline(always)]
+pub fn arr_or<const N: usize>(a: [bool; N], b: [bool; N]) -> [bool; N] {
+    let mut out = [false; N];
+    for i in 0..N {
+        out[i] = a[i] | b[i];
+    }
+    out
+}

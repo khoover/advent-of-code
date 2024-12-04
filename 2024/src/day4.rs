@@ -448,33 +448,6 @@ fn part2_fast_check(
         .count()
 }
 
-#[inline(always)]
-fn arr_eq(arr: &[u8; PART2_FAST], c: u8) -> [bool; PART2_FAST] {
-    let mut out = [false; PART2_FAST];
-    for i in 0..PART2_FAST {
-        out[i] = arr[i] == c;
-    }
-    out
-}
-
-#[inline(always)]
-fn arr_and(a: [bool; PART2_FAST], b: [bool; PART2_FAST]) -> [bool; PART2_FAST] {
-    let mut out = [false; PART2_FAST];
-    for i in 0..PART2_FAST {
-        out[i] = a[i] & b[i];
-    }
-    out
-}
-
-#[inline(always)]
-fn arr_or(a: [bool; PART2_FAST], b: [bool; PART2_FAST]) -> [bool; PART2_FAST] {
-    let mut out = [false; PART2_FAST];
-    for i in 0..PART2_FAST {
-        out[i] = a[i] | b[i];
-    }
-    out
-}
-
 pub fn part1(s: &str) -> usize {
     part1_simd(s)
 }
