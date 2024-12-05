@@ -18,7 +18,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("part1-small", |b| b.iter(|| part1(black_box(SITE_INPUT))));
     c.bench_function("part1-big", |b| b.iter(|| part1(black_box(MY_INPUT))));
     c.bench_function("part2-small", |b| b.iter(|| part2(black_box(SITE_INPUT))));
-    c.bench_function("part2-big", |b| b.iter(|| part1(black_box(MY_INPUT))));
+    c.bench_function("part2-big", |b| b.iter(|| part2(black_box(MY_INPUT))));
 }
 
 criterion_group!(benches, criterion_benchmark);
