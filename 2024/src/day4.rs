@@ -224,10 +224,13 @@ fn part1_simd(s: &str) -> usize {
     let stride = unsafe { columns.unchecked_add(1) };
     let diag_1_offsets = [0, stride + 1, 2 * stride + 2, 3 * stride + 3];
     let diag_2_offsets = [3, stride + 2, 2 * stride + 1, 3 * stride];
-    let diag_end = input.len() - diag_1_offsets[3];
-    let fast_iter_end = diag_end - PART1_WIDTH;
-    let fast_row_end = input.len() - PART1_WIDTH - 3;
-    let final_index = input.len() - 3;
+    let diag_end = input.len().saturating_sub(diag_1_offsets[3]);
+    let fast_iter_end = diag_end.saturating_sub(PART1_WIDTH);
+    let fast_row_end = input.len().saturating_sub(PART1_WIDTH + 3);
+    let Some(final_index) = input.len().checked_sub(3) else {
+        return 0;
+    };
+    let remaining_columns = input.len().saturating_sub(3 * stride).min(3);
     let mut top_left = 0;
     let mut sum = 0;
 
@@ -339,7 +342,7 @@ fn part1_simd(s: &str) -> usize {
     }
 
     // Handle remainder of the original pattern, just send it to the SIMD and let it figure it out.
-    {
+    if top_left < diag_end {
         // Top row
         sum += unsafe {
             check_remainder_slog(
@@ -383,27 +386,21 @@ fn part1_simd(s: &str) -> usize {
         top_left = diag_end;
     }
 
-    // Now the remaining 3 columns
-    sum += unsafe {
-        check_remainder_columns_simd(
-            input
-                .get_unchecked(top_left..top_left + 3)
-                .try_into()
-                .unwrap_unchecked(),
-            input
-                .get_unchecked(top_left + stride..top_left + stride + 3)
-                .try_into()
-                .unwrap_unchecked(),
-            input
-                .get_unchecked(top_left + 2 * stride..top_left + 2 * stride + 3)
-                .try_into()
-                .unwrap_unchecked(),
-            input
-                .get_unchecked(top_left + 3 * stride..top_left + 3 * stride + 3)
-                .try_into()
-                .unwrap_unchecked(),
-        )
-    };
+    // Now the remaining columns, <= 3 of them
+    if remaining_columns > 0 {
+        sum += unsafe {
+            check_remainder_columns_simd(
+                input.get_unchecked(top_left..top_left + remaining_columns),
+                input.get_unchecked(top_left + stride..top_left + stride + remaining_columns),
+                input.get_unchecked(
+                    top_left + 2 * stride..top_left + 2 * stride + remaining_columns,
+                ),
+                input.get_unchecked(
+                    top_left + 3 * stride..top_left + 3 * stride + remaining_columns,
+                ),
+            )
+        };
+    }
 
     // And now blaze through the rows
     while top_left < fast_row_end {
@@ -465,23 +462,9 @@ fn check_remainder_slog(x_row: &[u8], m_row: &[u8], a_row: &[u8], s_row: &[u8]) 
         .count()
 }
 
-fn check_remainder_columns_simd(
-    x_row: &[u8; 3],
-    m_row: &[u8; 3],
-    a_row: &[u8; 3],
-    s_row: &[u8; 3],
-) -> usize {
-    x_row
-        .iter()
-        .copied()
-        .zip(m_row.iter().copied())
-        .zip(a_row.iter().copied())
-        .zip(s_row.iter().copied())
-        .filter(|&(((x, m), a), s)| {
-            let candidate = u32::from_le_bytes([x, m, a, s]);
-            candidate == XMAS || candidate == XMAS.swap_bytes()
-        })
-        .count()
+fn check_remainder_columns_simd(x_row: &[u8], m_row: &[u8], a_row: &[u8], s_row: &[u8]) -> usize {
+    unsafe { std::hint::assert_unchecked(x_row.len() <= 3) };
+    check_remainder_slog(x_row, m_row, a_row, s_row)
 }
 
 fn check_xmas_simd(
@@ -525,7 +508,9 @@ fn part2_simd(s: &str) -> usize {
         return 0;
     };
     let stride = unsafe { columns.unchecked_add(1) };
-    let end_bound = input.len() - 2 * stride - 2;
+    let Some(end_bound) = input.len().checked_sub(2 * stride + 2) else {
+        return 0;
+    };
     let mut sum = 0;
 
     let top_right_offset = 2;
