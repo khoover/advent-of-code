@@ -440,7 +440,8 @@ fn part1_simd(s: &str) -> usize {
 
 const XMAS: u32 = 0x58_4D_41_53_u32;
 
-fn check_remainder_slog(x_row: &[u8], m_row: &[u8], a_row: &[u8], s_row: &[u8]) -> usize {
+#[target_feature(enable = "avx2,bmi1,bmi2,cmpxchg16b,lzcnt,movbe,popcnt")]
+unsafe fn check_remainder_slog(x_row: &[u8], m_row: &[u8], a_row: &[u8], s_row: &[u8]) -> usize {
     unsafe {
         std::hint::assert_unchecked(
             x_row.len() < PART1_WIDTH
@@ -463,11 +464,14 @@ fn check_remainder_slog(x_row: &[u8], m_row: &[u8], a_row: &[u8], s_row: &[u8]) 
 }
 
 fn check_remainder_columns_simd(x_row: &[u8], m_row: &[u8], a_row: &[u8], s_row: &[u8]) -> usize {
-    unsafe { std::hint::assert_unchecked(x_row.len() <= 3) };
-    check_remainder_slog(x_row, m_row, a_row, s_row)
+    unsafe {
+        std::hint::assert_unchecked(x_row.len() <= 3);
+        check_remainder_slog(x_row, m_row, a_row, s_row)
+    }
 }
 
-fn check_xmas_simd(
+#[target_feature(enable = "avx2,bmi1,bmi2,cmpxchg16b,lzcnt,movbe,popcnt")]
+unsafe fn check_xmas_simd(
     xs: &[u8; PART1_WIDTH],
     ma: &[u8; PART1_WIDTH],
     am: &[u8; PART1_WIDTH],
@@ -574,7 +578,8 @@ fn part2_simd(s: &str) -> usize {
     sum
 }
 
-fn part2_fast_check(
+#[target_feature(enable = "avx2,bmi1,bmi2,cmpxchg16b,lzcnt,movbe,popcnt")]
+unsafe fn part2_fast_check(
     top_left: &[u8; PART2_FAST],
     top_right: &[u8; PART2_FAST],
     bottom_left: &[u8; PART2_FAST],
@@ -600,6 +605,7 @@ fn part2_fast_check(
         .count()
 }
 
+#[inline(always)]
 fn arr_diff<const N: usize>(a: &[u8; N], b: &[u8; N]) -> [u8; N] {
     let mut out = [0; N];
     for i in 0..N {
