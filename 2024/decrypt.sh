@@ -7,6 +7,5 @@ cd ./input/2024/
 # --yes to assume "yes" for questions
 for file in *.gpg; do
     [ -f "$file" ] || break
-    gpg --quiet --batch --yes --decrypt --passphrase="$INPUT_PASSPHRASE" \
-        --output "./${file%.*}"
+    gpg --quiet --batch --yes --decrypt --passphrase="$INPUT_PASSPHRASE" --output "./${file%.*}" "${file}"
 done
