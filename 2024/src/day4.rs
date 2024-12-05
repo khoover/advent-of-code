@@ -206,6 +206,8 @@ fn part2_naive(s: &str) -> usize {
         .count()
 }
 
+const PART1_WIDTH: usize = 32;
+
 #[aoc(day4, part1, Simd)]
 fn part1_simd(s: &str) -> usize {
     let input = s.as_bytes();
@@ -220,105 +222,236 @@ fn part1_simd(s: &str) -> usize {
         return 0;
     };
     let stride = unsafe { columns.unchecked_add(1) };
-    let rows = (input.len() + 1) / stride;
+    let diag_1_offsets = [0, stride + 1, 2 * stride + 2, 3 * stride + 3];
+    let diag_2_offsets = [3, stride + 2, 2 * stride + 1, 3 * stride];
+    let diag_end = input.len() - diag_1_offsets[3];
+    let fast_iter_end = diag_end - PART1_WIDTH;
+    let fast_row_end = input.len() - PART1_WIDTH - 3;
+    let final_index = input.len() - 3;
+    let mut top_left = 0;
     let mut sum = 0;
 
-    // Covers all possible vertical and diagonal combos, plus all horizontal ones
-    // in all but the last 3 rows.
-    for i1 in (0..rows - 3).map(|x| x * stride) {
-        let i2 = i1 + stride;
-        let i3 = i1 + 2 * stride;
-        let i4 = i1 + 3 * stride;
-
-        for offset in 0..columns - 3 {
-            debug!(offset);
-            let r1: &[u8; 4] = unsafe {
-                input
-                    .get_unchecked(i1 + offset..i1 + offset + 4)
-                    .try_into()
-                    .unwrap_unchecked()
-            };
-            let r2: &[u8; 4] = unsafe {
-                input
-                    .get_unchecked(i2 + offset..i2 + offset + 4)
-                    .try_into()
-                    .unwrap_unchecked()
-            };
-            let r3: &[u8; 4] = unsafe {
-                input
-                    .get_unchecked(i3 + offset..i3 + offset + 4)
-                    .try_into()
-                    .unwrap_unchecked()
-            };
-            let r4: &[u8; 4] = unsafe {
-                input
-                    .get_unchecked(i4 + offset..i4 + offset + 4)
-                    .try_into()
-                    .unwrap_unchecked()
-            };
-            let col = u32::from_ne_bytes([r1[0], r2[0], r3[0], r4[0]]);
-            sum += (col == XMAS || col == XMAS.swap_bytes()) as usize;
-            debug!(sum);
-
-            let row = u32::from_ne_bytes(*r1);
-            sum += (row == XMAS || row == XMAS.swap_bytes()) as usize;
-            debug!(sum);
-
-            let diagonal_1 = u32::from_ne_bytes([r1[0], r2[1], r3[2], r4[3]]);
-            debug!(hex diagonal_1);
-            sum += (diagonal_1 == XMAS || diagonal_1 == XMAS.swap_bytes()) as usize;
-            debug!(sum);
-
-            let diagonal_2 = u32::from_ne_bytes([r1[3], r2[2], r3[1], r4[0]]);
-            sum += (diagonal_2 == XMAS || diagonal_2 == XMAS.swap_bytes()) as usize;
-            debug!(sum);
-        }
-
+    while top_left < fast_iter_end {
+        // Top row
         sum += unsafe {
-            check_columns_simd(
+            check_xmas_simd(
                 input
-                    .get_unchecked(i1 + columns - 3..i1 + columns)
+                    .get_unchecked(top_left..top_left + PART1_WIDTH)
                     .try_into()
                     .unwrap_unchecked(),
                 input
-                    .get_unchecked(i2 + columns - 3..i2 + columns)
+                    .get_unchecked(top_left + 1..top_left + 1 + PART1_WIDTH)
                     .try_into()
                     .unwrap_unchecked(),
                 input
-                    .get_unchecked(i3 + columns - 3..i3 + columns)
+                    .get_unchecked(top_left + 2..top_left + 2 + PART1_WIDTH)
                     .try_into()
                     .unwrap_unchecked(),
                 input
-                    .get_unchecked(i4 + columns - 3..i4 + columns)
+                    .get_unchecked(top_left + 3..top_left + 3 + PART1_WIDTH)
                     .try_into()
                     .unwrap_unchecked(),
             )
         };
-        debug!(sum);
-    }
 
-    // Now handle the horizontal ones in the last 3 rows
-    for i in (rows - 3..rows).map(|x| x * stride) {
-        debug!(i);
-        (0..columns - 3).for_each(|offset| {
-            debug!(offset);
-            let row = u32::from_ne_bytes(unsafe {
+        // Left column
+        sum += unsafe {
+            check_xmas_simd(
                 input
-                    .get_unchecked(i + offset..i + offset + 4)
+                    .get_unchecked(top_left..top_left + PART1_WIDTH)
                     .try_into()
-                    .unwrap_unchecked()
-            });
-            sum += (row == XMAS || row == XMAS.swap_bytes()) as usize;
-            debug!(sum);
-        });
+                    .unwrap_unchecked(),
+                input
+                    .get_unchecked(top_left + stride..top_left + stride + PART1_WIDTH)
+                    .try_into()
+                    .unwrap_unchecked(),
+                input
+                    .get_unchecked(top_left + 2 * stride..top_left + 2 * stride + PART1_WIDTH)
+                    .try_into()
+                    .unwrap_unchecked(),
+                input
+                    .get_unchecked(top_left + 3 * stride..top_left + 3 * stride + PART1_WIDTH)
+                    .try_into()
+                    .unwrap_unchecked(),
+            )
+        };
+
+        // Diag 1, \
+        sum += unsafe {
+            check_xmas_simd(
+                input
+                    .get_unchecked(
+                        top_left + diag_1_offsets[0]..top_left + diag_1_offsets[0] + PART1_WIDTH,
+                    )
+                    .try_into()
+                    .unwrap_unchecked(),
+                input
+                    .get_unchecked(
+                        top_left + diag_1_offsets[1]..top_left + diag_1_offsets[1] + PART1_WIDTH,
+                    )
+                    .try_into()
+                    .unwrap_unchecked(),
+                input
+                    .get_unchecked(
+                        top_left + diag_1_offsets[2]..top_left + diag_1_offsets[2] + PART1_WIDTH,
+                    )
+                    .try_into()
+                    .unwrap_unchecked(),
+                input
+                    .get_unchecked(
+                        top_left + diag_1_offsets[3]..top_left + diag_1_offsets[3] + PART1_WIDTH,
+                    )
+                    .try_into()
+                    .unwrap_unchecked(),
+            )
+        };
+
+        // Diag 2, /
+        sum += unsafe {
+            check_xmas_simd(
+                input
+                    .get_unchecked(
+                        top_left + diag_2_offsets[0]..top_left + diag_2_offsets[0] + PART1_WIDTH,
+                    )
+                    .try_into()
+                    .unwrap_unchecked(),
+                input
+                    .get_unchecked(
+                        top_left + diag_2_offsets[1]..top_left + diag_2_offsets[1] + PART1_WIDTH,
+                    )
+                    .try_into()
+                    .unwrap_unchecked(),
+                input
+                    .get_unchecked(
+                        top_left + diag_2_offsets[2]..top_left + diag_2_offsets[2] + PART1_WIDTH,
+                    )
+                    .try_into()
+                    .unwrap_unchecked(),
+                input
+                    .get_unchecked(
+                        top_left + diag_2_offsets[3]..top_left + diag_2_offsets[3] + PART1_WIDTH,
+                    )
+                    .try_into()
+                    .unwrap_unchecked(),
+            )
+        };
+        top_left += PART1_WIDTH;
     }
 
-    sum
+    // Handle remainder of the original pattern, just send it to the SIMD and let it figure it out.
+    {
+        // Top row
+        sum += unsafe {
+            check_remainder_slog(
+                input.get_unchecked(top_left..diag_end),
+                input.get_unchecked(top_left + 1..diag_end + 1),
+                input.get_unchecked(top_left + 2..diag_end + 2),
+                input.get_unchecked(top_left + 3..diag_end + 3),
+            )
+        };
+
+        // Left column
+        sum += unsafe {
+            check_remainder_slog(
+                input.get_unchecked(top_left..diag_end),
+                input.get_unchecked(top_left + stride..diag_end + stride),
+                input.get_unchecked(top_left + 2 * stride..diag_end + 2 * stride),
+                input.get_unchecked(top_left + 3 * stride..diag_end + 3 * stride),
+            )
+        };
+
+        // Diag 1, \
+        sum += unsafe {
+            check_remainder_slog(
+                input.get_unchecked(top_left + diag_1_offsets[0]..diag_end + diag_1_offsets[0]),
+                input.get_unchecked(top_left + diag_1_offsets[1]..diag_end + diag_1_offsets[1]),
+                input.get_unchecked(top_left + diag_1_offsets[2]..diag_end + diag_1_offsets[2]),
+                input.get_unchecked(top_left + diag_1_offsets[3]..diag_end + diag_1_offsets[3]),
+            )
+        };
+
+        // Diag 2, /
+        sum += unsafe {
+            check_remainder_slog(
+                input.get_unchecked(top_left + diag_2_offsets[0]..diag_end + diag_2_offsets[0]),
+                input.get_unchecked(top_left + diag_2_offsets[1]..diag_end + diag_2_offsets[1]),
+                input.get_unchecked(top_left + diag_2_offsets[2]..diag_end + diag_2_offsets[2]),
+                input.get_unchecked(top_left + diag_2_offsets[3]..diag_end + diag_2_offsets[3]),
+            )
+        };
+
+        top_left = diag_end;
+    }
+
+    // Now the remaining 3 columns
+    sum += unsafe {
+        check_remainder_columns_simd(
+            input
+                .get_unchecked(top_left..top_left + 3)
+                .try_into()
+                .unwrap_unchecked(),
+            input
+                .get_unchecked(top_left + stride..top_left + stride + 3)
+                .try_into()
+                .unwrap_unchecked(),
+            input
+                .get_unchecked(top_left + 2 * stride..top_left + 2 * stride + 3)
+                .try_into()
+                .unwrap_unchecked(),
+            input
+                .get_unchecked(top_left + 3 * stride..top_left + 3 * stride + 3)
+                .try_into()
+                .unwrap_unchecked(),
+        )
+    };
+
+    // And now blaze through the rows
+    while top_left < fast_row_end {
+        sum += unsafe {
+            check_xmas_simd(
+                input
+                    .get_unchecked(top_left..top_left + PART1_WIDTH)
+                    .try_into()
+                    .unwrap_unchecked(),
+                input
+                    .get_unchecked(top_left + 1..top_left + 1 + PART1_WIDTH)
+                    .try_into()
+                    .unwrap_unchecked(),
+                input
+                    .get_unchecked(top_left + 2..top_left + 2 + PART1_WIDTH)
+                    .try_into()
+                    .unwrap_unchecked(),
+                input
+                    .get_unchecked(top_left + 3..top_left + 3 + PART1_WIDTH)
+                    .try_into()
+                    .unwrap_unchecked(),
+            )
+        };
+        top_left += PART1_WIDTH;
+    }
+
+    // And get the remainder
+    sum + unsafe {
+        check_remainder_slog(
+            input.get_unchecked(top_left..final_index),
+            input.get_unchecked(top_left + 1..final_index + 1),
+            input.get_unchecked(top_left + 2..final_index + 2),
+            input.get_unchecked(top_left + 3..final_index + 3),
+        )
+    }
 }
 
 const XMAS: u32 = 0x58_4D_41_53_u32;
 
-fn check_columns_simd(x_row: &[u8; 3], m_row: &[u8; 3], a_row: &[u8; 3], s_row: &[u8; 3]) -> usize {
+fn check_remainder_slog(x_row: &[u8], m_row: &[u8], a_row: &[u8], s_row: &[u8]) -> usize {
+    unsafe {
+        std::hint::assert_unchecked(
+            x_row.len() < PART1_WIDTH
+                && x_row.len() == m_row.len()
+                && x_row.len() == a_row.len()
+                && x_row.len() == s_row.len(),
+        );
+    }
     x_row
         .iter()
         .copied()
@@ -332,9 +465,50 @@ fn check_columns_simd(x_row: &[u8; 3], m_row: &[u8; 3], a_row: &[u8; 3], s_row: 
         .count()
 }
 
+fn check_remainder_columns_simd(
+    x_row: &[u8; 3],
+    m_row: &[u8; 3],
+    a_row: &[u8; 3],
+    s_row: &[u8; 3],
+) -> usize {
+    x_row
+        .iter()
+        .copied()
+        .zip(m_row.iter().copied())
+        .zip(a_row.iter().copied())
+        .zip(s_row.iter().copied())
+        .filter(|&(((x, m), a), s)| {
+            let candidate = u32::from_le_bytes([x, m, a, s]);
+            candidate == XMAS || candidate == XMAS.swap_bytes()
+        })
+        .count()
+}
+
+fn check_xmas_simd(
+    xs: &[u8; PART1_WIDTH],
+    ma: &[u8; PART1_WIDTH],
+    am: &[u8; PART1_WIDTH],
+    sx: &[u8; PART1_WIDTH],
+) -> usize {
+    // Can use OR here since any base will have either forward or back, never both.
+    let found = arr_or(
+        arr_and(
+            arr_and(arr_eq(xs, X), arr_eq(ma, M)),
+            arr_and(arr_eq(am, A), arr_eq(sx, S)),
+        ),
+        arr_and(
+            arr_and(arr_eq(xs, S), arr_eq(ma, A)),
+            arr_and(arr_eq(am, M), arr_eq(sx, X)),
+        ),
+    );
+
+    found.into_iter().map(|x| x as usize).sum::<usize>()
+}
+
 const PART2_FAST: usize = 16;
-const A: u8 = b'A';
+const X: u8 = b'X';
 const M: u8 = b'M';
+const A: u8 = b'A';
 const S: u8 = b'S';
 
 #[aoc(day4, part2, Simd)]
@@ -415,7 +589,6 @@ fn part2_simd(s: &str) -> usize {
     sum
 }
 
-#[inline(always)]
 fn part2_fast_check(
     top_left: &[u8; PART2_FAST],
     top_right: &[u8; PART2_FAST],
@@ -423,29 +596,31 @@ fn part2_fast_check(
     bottom_right: &[u8; PART2_FAST],
     center_list: &[u8; PART2_FAST],
 ) -> usize {
-    let top_left_ms = arr_eq(top_left, M);
-    let bottom_right_ses = arr_eq(bottom_right, S);
-    let diag_1_a = arr_and(top_left_ms, bottom_right_ses);
+    let diag_1_diff = arr_diff(top_left, bottom_right);
+    let diag_1 = arr_or(
+        arr_eq(&diag_1_diff, S - M),
+        arr_eq(&diag_1_diff, M.wrapping_sub(S)),
+    );
 
-    let top_left_ses = arr_eq(top_left, S);
-    let bottom_right_ms = arr_eq(bottom_right, M);
-    let diag_1_b = arr_and(top_left_ses, bottom_right_ms);
-    let diag_1 = arr_or(diag_1_a, diag_1_b);
-
-    let top_right_ms = arr_eq(top_right, M);
-    let bottom_left_ses = arr_eq(bottom_left, S);
-    let diag_2_a = arr_and(top_right_ms, bottom_left_ses);
-
-    let top_right_ses = arr_eq(top_right, S);
-    let bottom_left_ms = arr_eq(bottom_left, M);
-    let diag_2_b = arr_and(top_right_ses, bottom_left_ms);
-    let diag_2 = arr_or(diag_2_a, diag_2_b);
+    let diag_2_diff = arr_diff(top_right, bottom_left);
+    let diag_2 = arr_or(
+        arr_eq(&diag_2_diff, S - M),
+        arr_eq(&diag_2_diff, M.wrapping_sub(S)),
+    );
 
     let valid_centers = arr_eq(center_list, A);
     arr_and(valid_centers, arr_and(diag_1, diag_2))
         .into_iter()
         .filter(|&x| x)
         .count()
+}
+
+fn arr_diff<const N: usize>(a: &[u8; N], b: &[u8; N]) -> [u8; N] {
+    let mut out = [0; N];
+    for i in 0..N {
+        out[i] = a[i].wrapping_sub(b[i]);
+    }
+    out
 }
 
 pub fn part1(s: &str) -> usize {
