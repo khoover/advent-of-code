@@ -208,8 +208,8 @@ fn part2_naive(s: &str) -> usize {
 
 const PART1_WIDTH: usize = 32;
 
-#[aoc(day4, part1, Simd)]
-fn part1_simd(s: &str) -> usize {
+#[target_feature(enable = "avx2,bmi1,bmi2,cmpxchg16b,lzcnt,movbe,popcnt")]
+unsafe fn part1_simd(s: &str) -> usize {
     let input = s.as_bytes();
     let Some(columns) = input
         .iter()
@@ -498,8 +498,8 @@ const M: u8 = b'M';
 const A: u8 = b'A';
 const S: u8 = b'S';
 
-#[aoc(day4, part2, Simd)]
-fn part2_simd(s: &str) -> usize {
+#[target_feature(enable = "avx2,bmi1,bmi2,cmpxchg16b,lzcnt,movbe,popcnt")]
+unsafe fn part2_simd(s: &str) -> usize {
     let input = s.as_bytes();
     let Some(columns) = input
         .iter()
@@ -614,12 +614,14 @@ fn arr_diff<const N: usize>(a: &[u8; N], b: &[u8; N]) -> [u8; N] {
     out
 }
 
+#[aoc(day4, part1, Simd)]
 pub fn part1(s: &str) -> usize {
-    part1_simd(s)
+    unsafe { part1_simd(s) }
 }
 
+#[aoc(day4, part2, Simd)]
 pub fn part2(s: &str) -> usize {
-    part2_simd(s)
+    unsafe { part2_simd(s) }
 }
 
 #[cfg(test)]
@@ -665,21 +667,21 @@ MXMXAXMASX";
 
     #[test]
     fn test_part1_simd_site() {
-        assert_eq!(part1_simd(SITE_INPUT), SITE_PART1_EXPECTED);
+        assert_eq!(unsafe { part1_simd(SITE_INPUT) }, SITE_PART1_EXPECTED);
     }
 
     #[test]
     fn test_part2_simd_site() {
-        assert_eq!(part2_simd(SITE_INPUT), SITE_PART2_EXPECTED);
+        assert_eq!(unsafe { part2_simd(SITE_INPUT) }, SITE_PART2_EXPECTED);
     }
 
     #[test]
     fn test_part1_simd_mine() {
-        assert_eq!(part1_simd(MY_INPUT), MY_PART1_EXPECTED);
+        assert_eq!(unsafe { part1_simd(MY_INPUT) }, MY_PART1_EXPECTED);
     }
 
     #[test]
     fn test_part2_simd_mine() {
-        assert_eq!(part2_simd(MY_INPUT), MY_PART2_EXPECTED);
+        assert_eq!(unsafe { part2_simd(MY_INPUT) }, MY_PART2_EXPECTED);
     }
 }
