@@ -31,13 +31,21 @@ static SITE_INPUT: &'static str = "47|53
 ";
 static MY_INPUT: &'static str = include_str!("../input/2024/day5.txt");
 
-use aoc_2024::day5::{part1, part2};
+use aoc_2024::day5::*;
 
 pub fn criterion_benchmark(c: &mut Criterion) {
-    c.bench_function("part1-small", |b| b.iter(|| part1(black_box(SITE_INPUT))));
-    c.bench_function("part1-big", |b| b.iter(|| part1(black_box(MY_INPUT))));
-    c.bench_function("part2-small", |b| b.iter(|| part2(black_box(SITE_INPUT))));
-    c.bench_function("part2-big", |b| b.iter(|| part2(black_box(MY_INPUT))));
+    c.bench_function("day5-part1-small", |b| {
+        b.iter(|| unsafe { part1_simd(black_box(SITE_INPUT.as_bytes)) })
+    });
+    c.bench_function("day5-part1-big", |b| {
+        b.iter(|| unsafe { part1_simd(black_box(MY_INPUT.as_bytes())) })
+    });
+    c.bench_function("day5-part2-small", |b| {
+        b.iter(|| unsafe { part2_simd(black_box(SITE_INPUT.as_bytes())) })
+    });
+    c.bench_function("day5-part2-big", |b| {
+        b.iter(|| unsafe { part2_simd(black_box(MY_INPUT.as_bytes())) })
+    });
 }
 
 criterion_group!(benches, criterion_benchmark);
