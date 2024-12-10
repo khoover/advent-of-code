@@ -42,6 +42,7 @@ dependencies = [
  "memchr",
  "nom",
  "radsort",
+ "rayon",
  "rdxsort",
  "regex",
  "rustc-hash",
