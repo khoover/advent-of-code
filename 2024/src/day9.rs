@@ -123,9 +123,6 @@ pub fn part2(input: &str) -> u64 {
                 gap_lookup[gap.width as usize].push(Reverse(gap_idx));
             }
             _ => {
-                gap_lookup[width as usize..]
-                    .iter_mut()
-                    .for_each(BinaryHeap::clear);
                 checksum += unsafe { calc_checksum_increment(id, width, block_idx) };
             }
         }
