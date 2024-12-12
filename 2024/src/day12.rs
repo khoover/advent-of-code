@@ -194,7 +194,11 @@ pub fn part2(s: &str) -> u64 {
                 let mut edges = match (neighbour_different & 0b01011010).count_ones() {
                     4 => 4,
                     3 => 2,
-                    2 if (neighbour_different & 0b01000010).count_ones() == 1 => 1,
+                    2 if (neighbour_different & 0b01000000 == 0)
+                        ^ (neighbour_different & 0b00000010 == 0) =>
+                    {
+                        1
+                    }
                     _ => 0,
                 };
                 edges += (neighbour_different & 0b11010000 == 0b10000000) as u64;
