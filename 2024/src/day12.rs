@@ -107,6 +107,11 @@ pub fn part1(s: &str) -> u64 {
 
 #[aoc(day12, part2)]
 pub fn part2(s: &str) -> u64 {
+    unsafe { part2_impl(s) }
+}
+
+#[target_feature(enable = "avx2,bmi1,bmi2,cmpxchg16b,lzcnt,movbe,popcnt")]
+unsafe fn part2_impl(s: &str) -> u64 {
     let columns = s.find("\n").unwrap();
     let stride = columns + 1;
     let rows = (s.len() + 1) / stride;
@@ -182,14 +187,10 @@ pub fn part2(s: &str) -> u64 {
                 let neighbour_different = neighbour_offsets
                     .into_iter()
                     .map(|offset| {
-                        idx.checked_add_signed(offset)
-                            .filter(|neighbour_idx| *neighbour_idx < regions.len())
-                            .map(|neighbour_idx| regions.other_sets(idx, neighbour_idx))
-                            .unwrap_or(true)
+                        let neighbour_idx = idx.wrapping_add_signed(offset);
+                        !(neighbour_idx < regions.len()) || regions.other_sets(neighbour_idx, idx)
                     })
-                    .fold(0_u8, |acc, is_different| {
-                        (acc << 1) | if is_different { 1 } else { 0 }
-                    });
+                    .fold(0_u8, |acc, is_different| (acc << 1) | (is_different as u8));
 
                 let mut edges = match (neighbour_different & 0b01011010).count_ones() {
                     4 => 4,
