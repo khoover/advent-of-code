@@ -233,27 +233,14 @@ pub fn part2(s: &str) -> Result<u64> {
         })
         .collect();
     let instructions: Vec<Instruction> = program.into_iter().map(|(_, x)| x).collect();
-    let a = recursive(
+    recursive(
         &original_state,
         &target_output,
         target_output.len() - 1,
         0,
         &instructions,
     )
-    .unwrap();
-
-    let mut state = original_state.clone();
-    state.register_a = a;
-    let mut output = Vec::new();
-    while let Some(instruction) = instructions.get(state.program_counter / 2) {
-        if let Some(new_output) = state.advance(*instruction) {
-            output.push(new_output);
-        }
-    }
-
-    assert_eq!(output, target_output);
-
-    Ok(a)
+    .context("Recursion failed to find answer")
 }
 
 fn recursive(
