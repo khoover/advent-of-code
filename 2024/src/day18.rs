@@ -82,8 +82,8 @@ pub fn part2(s: &str) -> String {
 
     impl std::cmp::Ord for HeapEntry {
         fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-            (self.distance + self.heuristic)
-                .cmp(&(other.distance + other.heuristic))
+            (self.distance + 2 * self.heuristic)
+                .cmp(&(other.distance + 2 * other.heuristic))
                 .reverse()
                 .then_with(|| self.distance.cmp(&other.distance).reverse())
         }
@@ -110,7 +110,6 @@ pub fn part2(s: &str) -> String {
     let mut right = bytes.len() - 1;
     let mut heap = BinaryHeap::new();
     while right - left > 1 {
-        println!("({left}, {right})");
         let mid = (left + right) / 2;
         heap.clear();
         let mut grid = [[false; 71]; 71];
