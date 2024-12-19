@@ -2,7 +2,7 @@ use super::*;
 
 use arrayvec::ArrayVec;
 use rustc_hash::FxHashMap;
-use trie_rs::{Trie, TrieBuilder};
+use trie_rs::{try_collect::TryFromIterator, Trie, TrieBuilder};
 
 fn make_trie(basis: &str) -> Trie<u8> {
     let mut builder: TrieBuilder<u8> = TrieBuilder::new();
@@ -12,6 +12,20 @@ fn make_trie(basis: &str) -> Trie<u8> {
     }
 
     builder.build()
+}
+
+struct CollectLen(usize);
+
+impl<A> TryFromIterator<A, CollectLen> for CollectLen {
+    type Error = ();
+
+    fn try_from_iter<T>(iter: T) -> Result<Self, Self::Error>
+    where
+        Self: Sized,
+        T: IntoIterator<Item = A>,
+    {
+        Ok(Self(iter.into_iter().count()))
+    }
 }
 
 #[aoc(day19, part1)]
@@ -27,8 +41,8 @@ pub fn part1(s: &str) -> usize {
 }
 
 fn recursive_check(target: &[u8], basis_trie: &Trie<u8>) -> bool {
-    for prefix in basis_trie.common_prefix_search::<ArrayVec<u8, 10>, _>(target) {
-        let new_target = &target[prefix.len()..];
+    for prefix in basis_trie.common_prefix_search::<CollectLen, _>(target) {
+        let new_target = &target[prefix.0..];
         if new_target.is_empty() || recursive_check(new_target, basis_trie) {
             return true;
         }
@@ -58,8 +72,8 @@ fn recursive_sum(
         return *cached;
     }
     let mut sum = 0;
-    for prefix in basis_trie.common_prefix_search::<ArrayVec<u8, 10>, _>(target) {
-        let new_target = &target[prefix.len()..];
+    for prefix in basis_trie.common_prefix_search::<CollectLen, _>(target) {
+        let new_target = &target[prefix.0..];
         if new_target.is_empty() {
             sum += 1;
         } else {
