@@ -2,37 +2,44 @@ use super::*;
 
 use arrayvec::ArrayVec;
 use rustc_hash::FxHashMap;
-use trie_rs::{try_collect::TryFromIterator, Trie, TrieBuilder};
+use trie_rs::{
+    map::{Trie, TrieBuilder},
+    try_collect::TryFromIterator,
+};
 
-fn make_trie(basis: &str) -> Trie<u8> {
-    let mut builder: TrieBuilder<u8> = TrieBuilder::new();
+fn make_trie(basis: &str) -> Trie<u8, usize> {
+    let mut builder = TrieBuilder::new();
 
     for towel in basis.split(", ") {
-        builder.push(towel);
+        builder.push(towel, towel.len());
     }
 
     builder.build()
 }
 
-struct CollectLen(usize);
+#[aoc_generator(day19)]
+fn gen<'s>(s: &'s str) -> (Trie<u8, usize>, String) {
+    let (basis, targets) = s.split_once("\n\n").unwrap();
+    let trie = make_trie(basis);
+    (trie, targets.to_owned())
+}
 
-impl<A> TryFromIterator<A, CollectLen> for CollectLen {
+struct DropIter;
+
+impl<A> TryFromIterator<A, DropIter> for DropIter {
     type Error = ();
 
-    fn try_from_iter<T>(iter: T) -> Result<Self, Self::Error>
+    fn try_from_iter<T>(_iter: T) -> Result<Self, Self::Error>
     where
         Self: Sized,
         T: IntoIterator<Item = A>,
     {
-        Ok(Self(iter.into_iter().count()))
+        Ok(DropIter)
     }
 }
 
 #[aoc(day19, part1)]
-pub fn part1(s: &str) -> usize {
-    let (basis, targets) = s.split_once("\n\n").unwrap();
-    let trie = make_trie(basis);
-
+pub fn part1((trie, targets): &(Trie<u8, usize>, String)) -> usize {
     targets
         .lines()
         .map(|line| line.as_bytes())
@@ -40,9 +47,9 @@ pub fn part1(s: &str) -> usize {
         .count()
 }
 
-fn recursive_check(target: &[u8], basis_trie: &Trie<u8>) -> bool {
-    for prefix in basis_trie.common_prefix_search::<CollectLen, _>(target) {
-        let new_target = &target[prefix.0..];
+fn recursive_check(target: &[u8], basis_trie: &Trie<u8, usize>) -> bool {
+    for (_, prefix_len) in basis_trie.common_prefix_search::<DropIter, _>(target) {
+        let new_target = &target[*prefix_len..];
         if new_target.is_empty() || recursive_check(new_target, basis_trie) {
             return true;
         }
@@ -51,9 +58,7 @@ fn recursive_check(target: &[u8], basis_trie: &Trie<u8>) -> bool {
 }
 
 #[aoc(day19, part2)]
-pub fn part2(s: &str) -> usize {
-    let (basis, targets) = s.split_once("\n\n").unwrap();
-    let trie = make_trie(basis);
+pub fn part2((trie, targets): &(Trie<u8, usize>, String)) -> usize {
     let mut count_cache: FxHashMap<ArrayVec<u8, 60>, usize> = FxHashMap::default();
 
     targets
@@ -65,15 +70,15 @@ pub fn part2(s: &str) -> usize {
 
 fn recursive_sum(
     target: &[u8],
-    basis_trie: &Trie<u8>,
+    basis_trie: &Trie<u8, usize>,
     cache: &mut FxHashMap<ArrayVec<u8, 60>, usize>,
 ) -> usize {
     if let Some(cached) = cache.get(target) {
         return *cached;
     }
     let mut sum = 0;
-    for prefix in basis_trie.common_prefix_search::<CollectLen, _>(target) {
-        let new_target = &target[prefix.0..];
+    for (_, prefix_len) in basis_trie.common_prefix_search::<DropIter, _>(target) {
+        let new_target = &target[*prefix_len..];
         if new_target.is_empty() {
             sum += 1;
         } else {
