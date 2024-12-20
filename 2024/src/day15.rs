@@ -3,12 +3,10 @@ use std::{
     ops::{Index, IndexMut},
 };
 
-use arrayvec::Drain;
-
 use super::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Direction {
+pub enum Direction {
     Up,
     Down,
     Left,
@@ -27,7 +25,7 @@ impl From<Direction> for (isize, isize) {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Tile {
+pub enum Tile {
     Robot,
     Box,
     Wall,
@@ -35,7 +33,7 @@ enum Tile {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Tile2 {
+pub enum Tile2 {
     Robot,
     BoxLeft,
     BoxRight,
@@ -44,7 +42,7 @@ enum Tile2 {
 }
 
 #[derive(Clone, Debug)]
-struct Grid<T> {
+pub struct Grid<T> {
     width: usize,
     height: usize,
     contents: Vec<T>,
@@ -306,9 +304,7 @@ fn can_push(grid: &Grid<Tile2>, pos: (isize, isize), row_offset: isize) -> bool 
 
 fn do_push(grid: &mut Grid<Tile2>, pos: (isize, isize), row_offset: isize) {
     match grid[pos] {
-        Tile2::Empty => {
-            return;
-        }
+        Tile2::Empty => {}
         Tile2::BoxLeft => {
             do_push(grid, (pos.0 + row_offset, pos.1), row_offset);
             do_push(grid, (pos.0 + row_offset, pos.1 + 1), row_offset);

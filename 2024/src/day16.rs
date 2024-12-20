@@ -6,14 +6,11 @@ use arrayvec::ArrayVec;
 use petgraph::{
     algo::{astar, dijkstra},
     graphmap::DiGraphMap,
-    visit::{depth_first_search, Control, DfsEvent},
-    Direction as PetgraphDirection,
 };
 use rustc_hash::FxHashSet;
-use std::collections::BinaryHeap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum Direction {
+pub enum Direction {
     Up,
     Down,
     Left,
@@ -28,7 +25,7 @@ const ALL_DIRS: [Direction; 4] = [
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum EdgeType {
+pub enum EdgeType {
     Straight,
     Turn,
 }
@@ -62,21 +59,21 @@ impl Direction {
     }
 }
 
-#[aoc_generator(day16)]
-fn gen(
-    s: &str,
-) -> (
+type ParsedInput = (
     DiGraphMap<(usize, usize, Direction), EdgeType>,
     (usize, usize),
     (usize, usize),
-) {
+);
+
+#[aoc_generator(day16)]
+fn gen(s: &str) -> ParsedInput {
     let columns = s.find("\n").unwrap();
     let stride = columns + 1;
     let end_pos = Cell::new(None);
     let start_pos = Cell::new(None);
     let end_pos_ref = &end_pos;
     let start_pos_ref = &start_pos;
-    let mut g: DiGraphMap<(usize, usize, Direction), EdgeType> =
+    let g: DiGraphMap<(usize, usize, Direction), EdgeType> =
         DiGraphMap::from_edges(s.lines().enumerate().flat_map(|(row, line)| {
             line.as_bytes()
                 .iter()
@@ -124,13 +121,7 @@ fn gen(
 }
 
 #[aoc(day16, part1)]
-pub fn part1(
-    (g, start_pos, end): &(
-        DiGraphMap<(usize, usize, Direction), EdgeType>,
-        (usize, usize),
-        (usize, usize),
-    ),
-) -> u64 {
+pub fn part1((g, start_pos, end): &ParsedInput) -> u64 {
     let start = (start_pos.0, start_pos.1, Direction::Right);
 
     astar(
@@ -160,13 +151,7 @@ pub fn part1(
 }
 
 #[aoc(day16, part2)]
-pub fn part2(
-    (g, start_pos, end): &(
-        DiGraphMap<(usize, usize, Direction), EdgeType>,
-        (usize, usize),
-        (usize, usize),
-    ),
-) -> usize {
+pub fn part2((g, start_pos, end): &ParsedInput) -> usize {
     let mut seats = FxHashSet::<(usize, usize)>::default();
     let mut reverse_g = DiGraphMap::from_edges(
         g.all_edges()

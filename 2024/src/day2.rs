@@ -464,7 +464,7 @@ fn check_line_part2(input: &[u8]) -> (bool, &[u8]) {
 #[cfg(test)]
 mod test {
     use super::*;
-    static EXAMPLE: &'static str = "7 6 4 2 1
+    static EXAMPLE: &str = "7 6 4 2 1
 1 2 7 8 9
 9 7 6 2 1
 1 3 2 4 5
@@ -472,7 +472,7 @@ mod test {
 1 3 6 7 9
 ";
 
-    static INPUT: &'static str = include_str!("../input/2024/day2.txt");
+    static INPUT: &str = include_str!("../input/2024/day2.txt");
 
     #[test]
     fn test_part1_hyper() {

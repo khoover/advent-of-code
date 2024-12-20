@@ -1,5 +1,5 @@
 use super::*;
-use partitions::{partition_vec, PartitionVec};
+use partitions::PartitionVec;
 
 #[aoc(day12, part1)]
 pub fn part1(s: &str) -> u64 {
@@ -93,7 +93,6 @@ pub fn part1(s: &str) -> u64 {
         .all_sets()
         .map(|set| {
             let (area, perimeter) = set.fold((0, 0), |(area, perimeter), (idx, edges)| {
-                let input_idx = idx + (idx / columns);
                 debug!(idx);
                 debug!(edges);
                 (area + 1, perimeter + edges)
@@ -188,7 +187,7 @@ unsafe fn part2_impl(s: &str) -> u64 {
                     .into_iter()
                     .map(|offset| {
                         let neighbour_idx = idx.wrapping_add_signed(offset);
-                        !(neighbour_idx < regions.len()) || regions.other_sets(neighbour_idx, idx)
+                        neighbour_idx >= regions.len() || regions.other_sets(neighbour_idx, idx)
                     })
                     .fold(0_u8, |acc, is_different| (acc << 1) | (is_different as u8));
 

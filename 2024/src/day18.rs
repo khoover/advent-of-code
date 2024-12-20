@@ -1,13 +1,13 @@
 use super::*;
 
-use std::collections::{BinaryHeap, VecDeque};
+use std::collections::BinaryHeap;
 
 #[aoc(day18, part1)]
 pub fn part1(s: &str) -> u32 {
     let mut grid = [[false; 71]; 71];
     s.lines().take(1024).for_each(|line| {
         let (x, y) = line.split_once(",").unwrap();
-        grid[usize::from_str_radix(x, 10).unwrap()][usize::from_str_radix(y, 10).unwrap()] = true;
+        grid[x.parse::<usize>().unwrap()][y.parse::<usize>().unwrap()] = true;
     });
 
     struct HeapEntry {
@@ -67,10 +67,7 @@ pub fn part2(s: &str) -> String {
         .lines()
         .map(|line| {
             let (x, y) = line.split_once(",").unwrap();
-            (
-                usize::from_str_radix(x, 10).unwrap(),
-                usize::from_str_radix(y, 10).unwrap(),
-            )
+            (x.parse::<usize>().unwrap(), y.parse::<usize>().unwrap())
         })
         .collect();
 

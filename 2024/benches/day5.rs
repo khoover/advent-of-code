@@ -1,6 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
-static SITE_INPUT: &'static str = "47|53
+static SITE_INPUT: &str = "47|53
 97|13
 97|61
 97|47
@@ -29,7 +29,7 @@ static SITE_INPUT: &'static str = "47|53
 61,13,29
 97,13,75,29,47
 ";
-static MY_INPUT: &'static str = include_str!("../input/2024/day5.txt");
+static MY_INPUT: &str = include_str!("../input/2024/day5.txt");
 
 use aoc_2024::day5::*;
 

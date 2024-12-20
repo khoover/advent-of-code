@@ -18,7 +18,7 @@ fn make_trie(basis: &str) -> Trie<u8, usize> {
 }
 
 #[aoc_generator(day19)]
-fn gen<'s>(s: &'s str) -> (Trie<u8, usize>, String) {
+fn gen(s: &str) -> (Trie<u8, usize>, String) {
     let (basis, targets) = s.split_once("\n\n").unwrap();
     let trie = make_trie(basis);
     (trie, targets.to_owned())
@@ -43,7 +43,7 @@ pub fn part1((trie, targets): &(Trie<u8, usize>, String)) -> usize {
     targets
         .lines()
         .map(|line| line.as_bytes())
-        .filter(|&bytes| recursive_check(bytes, &trie))
+        .filter(|&bytes| recursive_check(bytes, trie))
         .count()
 }
 
@@ -64,7 +64,7 @@ pub fn part2((trie, targets): &(Trie<u8, usize>, String)) -> usize {
     targets
         .lines()
         .map(|line| line.as_bytes())
-        .map(|bytes| recursive_sum(bytes, &trie, &mut count_cache))
+        .map(|bytes| recursive_sum(bytes, trie, &mut count_cache))
         .sum()
 }
 

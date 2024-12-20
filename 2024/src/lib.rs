@@ -29,7 +29,6 @@ pub mod day8;
 pub mod day9;
 
 use anyhow::{Context, Result};
-use core::arch::x86_64::*;
 use rayon::prelude::*;
 use utils::*;
 

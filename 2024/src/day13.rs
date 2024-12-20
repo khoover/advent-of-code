@@ -85,7 +85,7 @@ pub fn part1_dumb(s: &str) -> u32 {
             if cheapest_win.is_some_and(|win| cost > win) {
                 break;
             }
-            for b in 0..=100 {
+            for _ in 0..=100 {
                 if pos == machine.prize {
                     cheapest_win = Some((*cheapest_win.get_or_insert(cost)).min(cost));
                     break;

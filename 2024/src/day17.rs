@@ -11,8 +11,6 @@ use nom::{
     Parser,
 };
 
-use rayon::prelude::*;
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Combo {
     Literal0,

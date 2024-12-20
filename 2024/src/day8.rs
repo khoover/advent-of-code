@@ -1,11 +1,10 @@
-use std::cmp::max;
-
 use super::*;
-use arrayvec::ArrayVec;
 use rustc_hash::FxHashSet;
 
+type ParsedInput = ([Vec<(isize, isize)>; 62], (isize, isize));
+
 #[aoc_generator(day8)]
-fn build_map(s: &str) -> ([Vec<(isize, isize)>; 62], (isize, isize)) {
+fn build_map(s: &str) -> ParsedInput {
     let columns = s.find("\n").unwrap();
     let stride = columns + 1;
     let rows = (s.len() + 1) / stride;
@@ -14,8 +13,7 @@ fn build_map(s: &str) -> ([Vec<(isize, isize)>; 62], (isize, isize)) {
 
     for row in 0..rows {
         let row_bytes = &bytes[row * stride..];
-        for col in 0..columns {
-            let b = row_bytes[col];
+        for (col, b) in row_bytes[..columns].iter().copied().enumerate() {
             let idx = match b {
                 b'0'..=b'9' => (b - b'0') as usize,
                 b'a'..=b'z' => (b - b'a' + 10) as usize,
@@ -30,7 +28,7 @@ fn build_map(s: &str) -> ([Vec<(isize, isize)>; 62], (isize, isize)) {
 }
 
 #[aoc(day8, part1)]
-fn part1(input: &([Vec<(isize, isize)>; 62], (isize, isize))) -> usize {
+fn part1(input: &ParsedInput) -> usize {
     let mut positions = FxHashSet::default();
     let (antennas, (rows, cols)) = input;
     for antenna_collection in antennas.iter() {
@@ -57,7 +55,7 @@ fn part1(input: &([Vec<(isize, isize)>; 62], (isize, isize))) -> usize {
 }
 
 #[aoc(day8, part2)]
-fn part2(input: &([Vec<(isize, isize)>; 62], (isize, isize))) -> usize {
+fn part2(input: &ParsedInput) -> usize {
     let mut positions = FxHashSet::default();
     let (antennas, (rows, cols)) = input;
     let max_repetitions: isize = *rows.min(cols);

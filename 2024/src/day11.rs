@@ -1,5 +1,4 @@
 use super::*;
-use parking_lot::{RwLock, RwLockUpgradableReadGuard};
 use rayon::{join, prelude::*};
 use rustc_hash::FxHashMap;
 
@@ -7,7 +6,7 @@ use rustc_hash::FxHashMap;
 pub fn part1_rayon(input: &str) -> u64 {
     input
         .split_ascii_whitespace()
-        .map(|s| <u64>::from_str_radix(s, 10).unwrap())
+        .map(|s| s.parse().unwrap())
         .par_bridge()
         .map(|stone| calculate_stone_count(stone, 25))
         .sum()
@@ -42,7 +41,7 @@ pub fn part1_cache(input: &str) -> u64 {
     let mut cache: FxHashMap<(u64, u8), u64> = FxHashMap::default();
     input
         .split_ascii_whitespace()
-        .map(|s| <u64>::from_str_radix(s, 10).unwrap())
+        .map(|s| s.parse().unwrap())
         .map(|stone| calculate_stone_count_with_cache(stone, 25, &mut cache))
         .sum()
 }
@@ -52,7 +51,7 @@ pub fn part2_cache(input: &str) -> u64 {
     let mut cache: FxHashMap<(u64, u8), u64> = FxHashMap::default();
     input
         .split_ascii_whitespace()
-        .map(|s| <u64>::from_str_radix(s, 10).unwrap())
+        .map(|s| s.parse().unwrap())
         .map(|stone| calculate_stone_count_with_cache(stone, 75, &mut cache))
         .sum()
 }

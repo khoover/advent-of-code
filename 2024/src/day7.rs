@@ -14,7 +14,7 @@ fn part1(s: &str) -> u64 {
     s.lines()
         //.par_bridge()
         .map(|line| run_parse(line, parse_line).unwrap())
-        .filter(|(target, inputs)| check_part1_line(*target, &*inputs))
+        .filter(|(target, inputs)| check_part1_line(*target, inputs))
         .map(|(target, _)| target)
         .sum()
 }
@@ -48,7 +48,7 @@ fn part2(s: &str) -> u64 {
     s.lines()
         .par_bridge()
         .map(|line| run_parse(line, parse_line).unwrap())
-        .filter(|(target, inputs)| check_part2_line(*target, &*inputs))
+        .filter(|(target, inputs)| check_part2_line(*target, inputs))
         .map(|(target, _)| target)
         .sum()
 }
@@ -76,7 +76,7 @@ fn check_part2_line(target: u64, inputs: &[u64]) -> bool {
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    
 
     #[test]
     fn examine_input() {}

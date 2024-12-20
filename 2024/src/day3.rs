@@ -285,7 +285,7 @@ pub fn part2(s: &str) -> u32 {
 mod test {
     use super::*;
 
-    static INPUT: &'static str = include_str!("../input/2024/day3.txt");
+    static INPUT: &str = include_str!("../input/2024/day3.txt");
 
     #[test]
     fn generate_frequencies() {

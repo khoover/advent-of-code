@@ -1,6 +1,5 @@
 use super::*;
 use arrayvec::ArrayVec;
-use std::{hint::unreachable_unchecked, mem::MaybeUninit};
 
 use anyhow::{Error, Result};
 use nom::{
@@ -34,7 +33,6 @@ fn part1_base(s: &str) -> Result<u32> {
             || (),
             |(), (a, b)| {
                 lut[(a as usize * 100) + b as usize] = true;
-                ()
             },
         ),
         newline,
@@ -53,8 +51,7 @@ fn part1_base(s: &str) -> Result<u32> {
             debug!(list);
             for i in 0..list.len() {
                 let a = list[i];
-                for j in i..list.len() {
-                    let b = list[j];
+                for b in list[i..].iter().copied() {
                     if lut[(b as usize * 100) + a as usize] {
                         return acc;
                     }
@@ -82,7 +79,6 @@ fn part2_base(s: &str) -> Result<u32> {
             || (),
             |(), (a, b)| {
                 lut[(a as usize * 100) + b as usize] = true;
-                ()
             },
         ),
         newline,
@@ -147,6 +143,8 @@ pub fn part2(s: &str) -> Result<u32> {
     part2_base(s)
 }
 
+/// # Safety
+/// Can only be called on x86 systems with certain instructions available.
 #[target_feature(enable = "avx2,bmi1,bmi2,cmpxchg16b,lzcnt,movbe,popcnt")]
 pub unsafe fn part1_simd(input: &[u8]) -> u32 {
     // Bitsets, given a, b, there's rule a|b iff a_must_before_b[a] & (1<<b) != 0
@@ -212,6 +210,8 @@ pub unsafe fn part1_simd(input: &[u8]) -> u32 {
     sum
 }
 
+/// # Safety
+/// Can only be called on x86 systems with certain instructions available.
 #[target_feature(enable = "avx2,bmi1,bmi2,cmpxchg16b,lzcnt,movbe,popcnt")]
 pub unsafe fn part2_simd(input: &[u8]) -> u32 {
     // Bitsets, given a, b, there's rule a|b iff a_must_before_b[a] & (1<<b) != 0
@@ -385,9 +385,8 @@ mod test {
         let longest = MY_INPUT.lines().map(|l| l.len() + 1).max().unwrap();
         println!("longest line is {longest}");
 
-        let mut splits = MY_INPUT.splitn(2, "\n\n");
-        let first = splits.next().unwrap();
-        let second = splits.next().unwrap();
+        let (first, second) = MY_INPUT.split_once("\n\n").unwrap();
+
         println!(
             "first half has {} bytes, or {} SIMD iters",
             first.len(),
@@ -412,7 +411,6 @@ mod test {
                 || (),
                 |(), (a, b)| {
                     lut[(a as usize * 100) + b as usize] = true;
-                    ()
                 },
             ),
             newline,

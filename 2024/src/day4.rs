@@ -628,7 +628,7 @@ pub fn part2(s: &str) -> usize {
 mod test {
     use super::*;
 
-    static SITE_INPUT: &'static str = "MMMSXXMASM
+    static SITE_INPUT: &str = "MMMSXXMASM
 MSAMXMSMSA
 AMXSXMAAMM
 MSAMASMSMX
@@ -641,7 +641,7 @@ MXMXAXMASX";
     const SITE_PART1_EXPECTED: usize = 18;
     const SITE_PART2_EXPECTED: usize = 9;
 
-    static MY_INPUT: &'static str = include_str!("../input/2024/day4.txt");
+    static MY_INPUT: &str = include_str!("../input/2024/day4.txt");
     const MY_PART1_EXPECTED: usize = 2583;
     const MY_PART2_EXPECTED: usize = 1978;
 

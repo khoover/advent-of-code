@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 
 use super::*;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use nom::{
     bytes::complete::tag,
     character::complete::{i16, newline, space1},
@@ -11,7 +11,7 @@ use nom::{
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct Robot {
+pub struct Robot {
     position: (i16, i16),
     velocity: (i16, i16),
 }
