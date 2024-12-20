@@ -39,30 +39,32 @@ pub fn part1(s: &str) -> usize {
         .map(|(b, a)| (a, b))
         .collect::<FxHashMap<_, _>>();
 
-    let mut count = 0;
-    for (i, pos) in path.into_iter().enumerate() {
-        for offset in [
-            (0, 2),
-            (0, -2),
-            (2, 0),
-            (-2, 0),
-            (1, 1),
-            (1, -1),
-            (-1, 1),
-            (-1, -1),
-        ] {
-            let new_pos_row = pos.0.checked_add_signed(offset.0);
-            let new_pos_col = pos.1.checked_add_signed(offset.1);
-            if let Some(new_pos) = new_pos_row.zip(new_pos_col) {
-                if let Some(distance) = distance_map.get(&new_pos) {
-                    if i + 102 <= *distance {
-                        count += 1;
-                    }
-                }
-            }
-        }
-    }
-    count
+    path.into_iter()
+        .enumerate()
+        .map(|(i, pos)| {
+            [
+                (0, 2),
+                (0, -2),
+                (2, 0),
+                (-2, 0),
+                (1, 1),
+                (1, -1),
+                (-1, 1),
+                (-1, -1),
+            ]
+            .into_iter()
+            .filter(|&offset| {
+                let new_pos_row = pos.0.checked_add_signed(offset.0);
+                let new_pos_col = pos.1.checked_add_signed(offset.1);
+                new_pos_row
+                    .zip(new_pos_col)
+                    .and_then(|new_pos| distance_map.get(&new_pos))
+                    .copied()
+                    .is_some_and(|distance| i + 102 <= distance)
+            })
+            .count()
+        })
+        .sum()
 }
 
 #[aoc(day20, part2)]
