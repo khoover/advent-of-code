@@ -1,5 +1,6 @@
 use super::*;
 
+use rayon::prelude::*;
 use rustc_hash::FxHashMap;
 
 #[aoc(day20, part1)]
@@ -98,15 +99,19 @@ pub fn part2(s: &str) -> usize {
         .map(|(b, a)| (a, b))
         .collect::<FxHashMap<_, _>>();
 
-    let mut count = 0;
-    for (i, pos) in path.iter().copied().enumerate() {
-        for x_offset in -20_isize..=20 {
-            let y_allowable = 20 - x_offset.abs();
-            for y_offset in -y_allowable..=y_allowable {
-                let new_pos_row = pos.0.checked_add_signed(x_offset);
-                let new_pos_col = pos.1.checked_add_signed(y_offset);
-                if let Some(new_pos) = new_pos_row.zip(new_pos_col) {
-                    if let Some(distance) = distance_map.get(&new_pos) {
+    path.into_par_iter()
+        .enumerate()
+        .map(|(i, pos)| {
+            let mut count = 0;
+            for x_offset in -20_isize..=20 {
+                let y_allowable = 20 - x_offset.abs();
+                for y_offset in -y_allowable..=y_allowable {
+                    let new_pos_row = pos.0.checked_add_signed(x_offset);
+                    let new_pos_col = pos.1.checked_add_signed(y_offset);
+                    if let Some(distance) = new_pos_row
+                        .zip(new_pos_col)
+                        .and_then(|new_pos| distance_map.get(&new_pos))
+                    {
                         if i + 100 + x_offset.unsigned_abs() + y_offset.unsigned_abs() <= *distance
                         {
                             count += 1;
@@ -114,7 +119,7 @@ pub fn part2(s: &str) -> usize {
                     }
                 }
             }
-        }
-    }
-    count
+            count
+        })
+        .sum()
 }
