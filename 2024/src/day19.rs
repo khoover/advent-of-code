@@ -1,6 +1,8 @@
 use super::*;
 
 use arrayvec::ArrayVec;
+use parking_lot::RwLock;
+use rayon::prelude::*;
 use rustc_hash::FxHashMap;
 use trie_rs::{
     map::{Trie, TrieBuilder},
@@ -41,7 +43,7 @@ impl<A> TryFromIterator<A, DropIter> for DropIter {
 #[aoc(day19, part1)]
 pub fn part1((trie, targets): &(Trie<u8, usize>, String)) -> usize {
     targets
-        .lines()
+        .par_lines()
         .map(|line| line.as_bytes())
         .filter(|&bytes| recursive_check(bytes, trie))
         .count()
@@ -59,21 +61,21 @@ fn recursive_check(target: &[u8], basis_trie: &Trie<u8, usize>) -> bool {
 
 #[aoc(day19, part2)]
 pub fn part2((trie, targets): &(Trie<u8, usize>, String)) -> usize {
-    let mut count_cache: FxHashMap<ArrayVec<u8, 60>, usize> = FxHashMap::default();
+    let count_cache: RwLock<FxHashMap<ArrayVec<u8, 60>, usize>> = RwLock::new(FxHashMap::default());
 
     targets
-        .lines()
+        .par_lines()
         .map(|line| line.as_bytes())
-        .map(|bytes| recursive_sum(bytes, trie, &mut count_cache))
+        .map(|bytes| recursive_sum(bytes, trie, &count_cache))
         .sum()
 }
 
 fn recursive_sum(
     target: &[u8],
     basis_trie: &Trie<u8, usize>,
-    cache: &mut FxHashMap<ArrayVec<u8, 60>, usize>,
+    cache: &RwLock<FxHashMap<ArrayVec<u8, 60>, usize>>,
 ) -> usize {
-    if let Some(cached) = cache.get(target) {
+    if let Some(cached) = cache.read().get(target) {
         return *cached;
     }
     let mut sum = 0;
@@ -85,6 +87,6 @@ fn recursive_sum(
             sum += recursive_sum(new_target, basis_trie, cache);
         }
     }
-    cache.insert(target.try_into().unwrap(), sum);
+    cache.write().insert(target.try_into().unwrap(), sum);
     sum
 }
