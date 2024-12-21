@@ -18,7 +18,7 @@ fn ten_key_to_coords(byte: u8) -> (i8, i8) {
         b'3' => (1, 2),
         b'0' => (0, 1),
         b'A' => (0, 2),
-        _ => unreachable!(),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     }
 }
 
@@ -78,6 +78,9 @@ pub fn part1(s: &str) -> u64 {
 
 fn part1_per_line(line: &str, cache: &mut CacheType) -> u64 {
     let bytes = line.as_bytes();
+    unsafe {
+        std::hint::assert_unchecked(bytes.len() == 4);
+    }
     let numeric_part =
         (bytes[0] - b'0') as u64 * 100 + (bytes[1] - b'0') as u64 * 10 + (bytes[2] - b'0') as u64;
     let sequence_len: u64 = bytes
@@ -93,6 +96,9 @@ pub fn part2(s: &str) -> u64 {
     s.lines()
         .map(|line| {
             let bytes = line.as_bytes();
+            unsafe {
+                std::hint::assert_unchecked(bytes.len() == 4);
+            }
             let numeric_part = (bytes[0] - b'0') as u64 * 100
                 + (bytes[1] - b'0') as u64 * 10
                 + (bytes[2] - b'0') as u64;
@@ -118,7 +124,9 @@ fn cheapest_10key_path(start: u8, end: u8, total_layers: u8, cache: &mut CacheTy
     let mut res_10key = u64::MAX;
     while let Some((coord, mut directions)) = bfs.pop_front() {
         if coord == end_coord {
-            directions.push(DirectionPad::A);
+            unsafe {
+                directions.push_unchecked(DirectionPad::A);
+            }
             res_10key = res_10key.min(
                 directions
                     .windows(2)
@@ -134,12 +142,16 @@ fn cheapest_10key_path(start: u8, end: u8, total_layers: u8, cache: &mut CacheTy
         match coord.0.cmp(&end_coord.0) {
             Ordering::Less => {
                 let mut dir_clone = directions.clone();
-                dir_clone.push(DirectionPad::Up);
+                unsafe {
+                    dir_clone.push_unchecked(DirectionPad::Up);
+                }
                 bfs.push_back(((coord.0 + 1, coord.1), dir_clone));
             }
             Ordering::Greater => {
                 let mut dir_clone = directions.clone();
-                dir_clone.push(DirectionPad::Down);
+                unsafe {
+                    dir_clone.push_unchecked(DirectionPad::Down);
+                }
                 bfs.push_back(((coord.0 - 1, coord.1), dir_clone));
             }
             Ordering::Equal => (),
@@ -147,11 +159,11 @@ fn cheapest_10key_path(start: u8, end: u8, total_layers: u8, cache: &mut CacheTy
 
         match coord.1.cmp(&end_coord.1) {
             Ordering::Less => {
-                directions.push(DirectionPad::Right);
+                unsafe { directions.push_unchecked(DirectionPad::Right) };
                 bfs.push_back(((coord.0, coord.1 + 1), directions));
             }
             Ordering::Greater => {
-                directions.push(DirectionPad::Left);
+                unsafe { directions.push_unchecked(DirectionPad::Left) };
                 bfs.push_back(((coord.0, coord.1 - 1), directions));
             }
             Ordering::Equal => (),
@@ -167,6 +179,9 @@ fn cheapest_dirpad_path(
     layer: u8,
     cache: &mut CacheType,
 ) -> u64 {
+    unsafe {
+        std::hint::assert_unchecked(layer <= 25);
+    }
     if let Some(cost) = cache[start][end][layer as usize] {
         return cost;
     }
@@ -183,7 +198,7 @@ fn cheapest_dirpad_path(
 
     while let Some((coord, mut directions)) = bfs.pop_front() {
         if coord == end_coord {
-            directions.push(DirectionPad::A);
+            unsafe { directions.push_unchecked(DirectionPad::A) };
             res = res.min(
                 directions
                     .windows(2)
@@ -199,12 +214,12 @@ fn cheapest_dirpad_path(
         match coord.0.cmp(&end_coord.0) {
             Ordering::Less => {
                 let mut dir_clone = directions.clone();
-                dir_clone.push(DirectionPad::Up);
+                unsafe { dir_clone.push_unchecked(DirectionPad::Up) };
                 bfs.push_back(((coord.0 + 1, coord.1), dir_clone));
             }
             Ordering::Greater => {
                 let mut dir_clone = directions.clone();
-                dir_clone.push(DirectionPad::Down);
+                unsafe { dir_clone.push_unchecked(DirectionPad::Down) };
                 bfs.push_back(((coord.0 - 1, coord.1), dir_clone));
             }
             Ordering::Equal => (),
@@ -212,11 +227,11 @@ fn cheapest_dirpad_path(
 
         match coord.1.cmp(&end_coord.1) {
             Ordering::Less => {
-                directions.push(DirectionPad::Right);
+                unsafe { directions.push_unchecked(DirectionPad::Right) };
                 bfs.push_back(((coord.0, coord.1 + 1), directions));
             }
             Ordering::Greater => {
-                directions.push(DirectionPad::Left);
+                unsafe { directions.push_unchecked(DirectionPad::Left) };
                 bfs.push_back(((coord.0, coord.1 - 1), directions));
             }
             Ordering::Equal => (),
