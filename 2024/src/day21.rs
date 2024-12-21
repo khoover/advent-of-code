@@ -90,6 +90,33 @@ fn part1_per_line(line: &str, cache: &mut CacheType) -> u64 {
     (sequence_len + cheapest_10key_path(b'A', bytes[0], 2, cache)) * numeric_part
 }
 
+#[aoc(day21, part1, Pregen)]
+pub fn part1_pregen(s: &str) -> u64 {
+    const PREGEN: [[u64; 5]; 5] = [
+        [1, 5, 7, 4, 8],
+        [9, 1, 9, 8, 4],
+        [9, 7, 1, 6, 4],
+        [8, 4, 4, 1, 7],
+        [10, 6, 8, 9, 1],
+    ];
+    s.lines()
+        .map(|line| {
+            let bytes = line.as_bytes();
+            unsafe {
+                std::hint::assert_unchecked(bytes.len() == 4);
+            }
+            let numeric_part = (bytes[0] - b'0') as u64 * 100
+                + (bytes[1] - b'0') as u64 * 10
+                + (bytes[2] - b'0') as u64;
+            let sequence_len: u64 = bytes
+                .windows(2)
+                .map(|window| cheapest_10key_path_pregen(window[0], window[1], &PREGEN))
+                .sum();
+            (sequence_len + cheapest_10key_path_pregen(b'A', bytes[0], &PREGEN)) * numeric_part
+        })
+        .sum()
+}
+
 #[aoc(day21, part2)]
 pub fn part2(s: &str) -> u64 {
     let mut cache = CacheType::default();
@@ -107,6 +134,33 @@ pub fn part2(s: &str) -> u64 {
                 .map(|window| cheapest_10key_path(window[0], window[1], 25, &mut cache))
                 .sum();
             (sequence_len + cheapest_10key_path(b'A', bytes[0], 25, &mut cache)) * numeric_part
+        })
+        .sum()
+}
+
+#[aoc(day21, part2, Pregen)]
+pub fn part2_pregen(s: &str) -> u64 {
+    const PREGEN: [[u64; 5]; 5] = [
+        [1, 5743602247, 10218188221, 5743602246, 10218188222],
+        [9009012839, 1, 11317884431, 9009012838, 5930403600],
+        [12192864309, 9156556999, 1, 8357534516, 5743602246],
+        [9009012838, 5743602246, 5930403600, 1, 9686334009],
+        [12192864310, 8357534516, 9009012838, 11104086645, 1],
+    ];
+    s.lines()
+        .map(|line| {
+            let bytes = line.as_bytes();
+            unsafe {
+                std::hint::assert_unchecked(bytes.len() == 4);
+            }
+            let numeric_part = (bytes[0] - b'0') as u64 * 100
+                + (bytes[1] - b'0') as u64 * 10
+                + (bytes[2] - b'0') as u64;
+            let sequence_len: u64 = bytes
+                .windows(2)
+                .map(|window| cheapest_10key_path_pregen(window[0], window[1], &PREGEN))
+                .sum();
+            (sequence_len + cheapest_10key_path_pregen(b'A', bytes[0], &PREGEN)) * numeric_part
         })
         .sum()
 }
@@ -131,6 +185,65 @@ fn cheapest_10key_path(start: u8, end: u8, total_layers: u8, cache: &mut CacheTy
                 directions
                     .windows(2)
                     .map(|window| cheapest_dirpad_path(window[0], window[1], total_layers, cache))
+                    .sum(),
+            );
+            continue;
+        }
+        if coord == (0, 0) {
+            continue;
+        }
+
+        match coord.0.cmp(&end_coord.0) {
+            Ordering::Less => {
+                let mut dir_clone = directions.clone();
+                unsafe {
+                    dir_clone.push_unchecked(DirectionPad::Up);
+                }
+                bfs.push_back(((coord.0 + 1, coord.1), dir_clone));
+            }
+            Ordering::Greater => {
+                let mut dir_clone = directions.clone();
+                unsafe {
+                    dir_clone.push_unchecked(DirectionPad::Down);
+                }
+                bfs.push_back(((coord.0 - 1, coord.1), dir_clone));
+            }
+            Ordering::Equal => (),
+        }
+
+        match coord.1.cmp(&end_coord.1) {
+            Ordering::Less => {
+                unsafe { directions.push_unchecked(DirectionPad::Right) };
+                bfs.push_back(((coord.0, coord.1 + 1), directions));
+            }
+            Ordering::Greater => {
+                unsafe { directions.push_unchecked(DirectionPad::Left) };
+                bfs.push_back(((coord.0, coord.1 - 1), directions));
+            }
+            Ordering::Equal => (),
+        }
+    }
+    debug!(res_10key);
+    res_10key
+}
+
+fn cheapest_10key_path_pregen(start: u8, end: u8, pregen_cache: &[[u64; 5]; 5]) -> u64 {
+    let start_coord = ten_key_to_coords(start);
+    let end_coord = ten_key_to_coords(end);
+    let mut bfs = VecDeque::new();
+    let mut inital_dir = ArrayVec::<DirectionPad, 7>::new();
+    inital_dir.push(DirectionPad::A);
+    bfs.push_back((start_coord, inital_dir));
+    let mut res_10key = u64::MAX;
+    while let Some((coord, mut directions)) = bfs.pop_front() {
+        if coord == end_coord {
+            unsafe {
+                directions.push_unchecked(DirectionPad::A);
+            }
+            res_10key = res_10key.min(
+                directions
+                    .windows(2)
+                    .map(|window| pregen_cache[window[0]][window[1]])
                     .sum(),
             );
             continue;
@@ -254,6 +367,13 @@ mod test {
 179A
 456A
 379A";
+    const ALL_DIRPADS: [DirectionPad; 5] = [
+        DirectionPad::A,
+        DirectionPad::Down,
+        DirectionPad::Up,
+        DirectionPad::Left,
+        DirectionPad::Right,
+    ];
 
     #[test]
     fn test_part1() {
@@ -269,6 +389,30 @@ mod test {
         assert_eq!(part1_per_line(lines[2], &mut cache), 68 * 179, "line 2");
         assert_eq!(part1_per_line(lines[3], &mut cache), 64 * 456, "line 3");
         assert_eq!(part1_per_line(lines[4], &mut cache), 64 * 379, "line 4");
+    }
+
+    #[test]
+    fn pregen_2_deep() {
+        let mut cache = CacheType::default();
+        let mut final_result = [[0_u64; 5]; 5];
+        for start in ALL_DIRPADS {
+            for end in ALL_DIRPADS {
+                final_result[start][end] = cheapest_dirpad_path(start, end, 2, &mut cache);
+            }
+        }
+        println!("{final_result:?}");
+    }
+
+    #[test]
+    fn pregen_25_deep() {
+        let mut cache = CacheType::default();
+        let mut final_result = [[0_u64; 5]; 5];
+        for start in ALL_DIRPADS {
+            for end in ALL_DIRPADS {
+                final_result[start][end] = cheapest_dirpad_path(start, end, 25, &mut cache);
+            }
+        }
+        println!("{final_result:?}");
     }
 }
 
