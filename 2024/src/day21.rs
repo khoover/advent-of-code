@@ -664,6 +664,41 @@ mod test {
         }
         println!("{final_result:?}");
     }
+
+    #[test]
+    fn curious() {
+        const PREGEN: [[u64; 5]; 5] = [
+            [1, 5, 7, 4, 8],
+            [9, 1, 9, 8, 4],
+            [9, 7, 1, 6, 4],
+            [8, 4, 4, 1, 7],
+            [10, 6, 8, 9, 1],
+        ];
+        for a in ALL_DIRPADS {
+            for b in ALL_DIRPADS {
+                if (matches!(a, DirectionPad::Up | DirectionPad::Down)
+                    && matches!(b, DirectionPad::Up | DirectionPad::Down))
+                    || (matches!(a, DirectionPad::Left | DirectionPad::Right)
+                        && matches!(a, DirectionPad::Left | DirectionPad::Right))
+                {
+                    continue;
+                }
+                assert_eq!(
+                    PREGEN[DirectionPad::A][a] + PREGEN[a][b] + PREGEN[b][DirectionPad::A],
+                    PREGEN[DirectionPad::A][b] + PREGEN[b][a] + PREGEN[a][DirectionPad::A],
+                    "{:?}{:?}{:?}{:?} has different cost from {:?}{:?}{:?}{:?}",
+                    DirectionPad::A,
+                    a,
+                    b,
+                    DirectionPad::A,
+                    DirectionPad::A,
+                    b,
+                    a,
+                    DirectionPad::A
+                );
+            }
+        }
+    }
 }
 
 // vA<^AA>A -> <vA>^A<<vA^>A>AAvA^A -> v<<A>A>^AvA<^A>Av<<AA>A>^A<Av>A^AvA^AA<vA>^A<A>A
