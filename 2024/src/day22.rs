@@ -1,9 +1,10 @@
 use std::collections::hash_map::Entry;
 
 use super::*;
+use dashmap::DashMap;
 use parking_lot::Mutex;
 use rayon::prelude::*;
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
 
 #[aoc(day22, part1)]
 pub fn part1(s: &str) -> u64 {
@@ -69,12 +70,7 @@ pub fn part2(s: &str) -> u64 {
                     .or_insert(price as u64);
             }
         });
-    total_profits
-        .into_inner()
-        .into_iter()
-        .map(|(_, v)| v)
-        .max()
-        .unwrap()
+    total_profits.into_inner().into_values().max().unwrap()
 }
 
 #[aoc(day22, part2, Scope)]
@@ -136,6 +132,53 @@ pub fn part2_scope(input: &str) -> u64 {
                 let _ = sender.send(local_profits);
             });
     });
+
+    total_profits.into_values().max().unwrap()
+}
+
+#[aoc(day22, part2, DashMap)]
+pub fn part2_dash(s: &str) -> u64 {
+    let total_profits = DashMap::<[i8; 4], u64, _>::with_hasher(FxBuildHasher::default());
+
+    s.par_lines()
+        .map(|line| line.parse::<u64>().unwrap())
+        .for_each(|mut secret| {
+            let mut has_seen =
+                FxHashSet::<[i8; 4]>::with_capacity_and_hasher(2000, FxBuildHasher::default());
+            let mut previous_price = (secret % 10) as i8;
+            secret = evolve(secret);
+            let mut price = (secret % 10) as i8;
+            let mut diffs = [0_i8; 4];
+            diffs[0] = price - previous_price;
+            previous_price = price;
+
+            secret = evolve(secret);
+            price = (secret % 10) as i8;
+            diffs[1] = price - previous_price;
+            previous_price = price;
+
+            secret = evolve(secret);
+            price = (secret % 10) as i8;
+            diffs[2] = price - previous_price;
+            previous_price = price;
+
+            secret = evolve(secret);
+            price = (secret % 10) as i8;
+            diffs[3] = price - previous_price;
+            has_seen.insert(diffs);
+            *total_profits.entry(diffs).or_insert(0) += price as u64;
+            previous_price = price;
+
+            for _ in 4..2000 {
+                secret = evolve(secret);
+                price = (secret % 10) as i8;
+                diffs = [diffs[1], diffs[2], diffs[3], price - previous_price];
+                if has_seen.insert(diffs) {
+                    *total_profits.entry(diffs).or_insert(0) += price as u64;
+                }
+                previous_price = price;
+            }
+        });
 
     total_profits.into_iter().map(|(_, v)| v).max().unwrap()
 }

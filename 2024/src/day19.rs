@@ -1,9 +1,10 @@
 use super::*;
 
 use arrayvec::ArrayVec;
+use dashmap::DashMap;
 use parking_lot::RwLock;
 use rayon::prelude::*;
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxBuildHasher, FxHashMap};
 use trie_rs::{
     map::{Trie, TrieBuilder},
     try_collect::TryFromIterator,
@@ -88,5 +89,41 @@ fn recursive_sum(
         }
     }
     cache.write().insert(target.try_into().unwrap(), sum);
+    sum
+}
+
+#[aoc(day19, part2, Dash)]
+pub fn part2_dash((trie, targets): &(Trie<u8, usize>, String)) -> usize {
+    let count_cache: DashMap<ArrayVec<u8, 60>, usize, _> =
+        DashMap::with_hasher(FxBuildHasher::default());
+
+    targets
+        .par_lines()
+        .map(|line| line.as_bytes())
+        .map(|bytes| recursive_sum_dash(bytes, trie, &count_cache))
+        .sum()
+}
+
+fn recursive_sum_dash(
+    target: &[u8],
+    basis_trie: &Trie<u8, usize>,
+    cache: &DashMap<ArrayVec<u8, 60>, usize, FxBuildHasher>,
+) -> usize {
+    if let Some(cached) = cache.get(target) {
+        return *cached;
+    }
+    let mut sum = 0;
+    for (_, prefix_len) in basis_trie.common_prefix_search::<DropIter, _>(target) {
+        unsafe {
+            std::hint::assert_unchecked(*prefix_len <= target.len());
+        }
+        let new_target = &target[*prefix_len..];
+        if new_target.is_empty() {
+            sum += 1;
+        } else {
+            sum += recursive_sum_dash(new_target, basis_trie, cache);
+        }
+    }
+    cache.insert(unsafe { target.try_into().unwrap_unchecked() }, sum);
     sum
 }
