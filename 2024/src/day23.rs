@@ -91,12 +91,7 @@ fn part2(input: &str) -> usize {
         let max_clique = &max_clique;
         let adjacency_lists = adjacency_lists.as_slice();
         let vertexes: Vec<_> = (b'a'..=b'z')
-            .into_par_iter()
-            .flat_map(|first| {
-                (b'a'..=b'z')
-                    .into_par_iter()
-                    .map(move |second| byte_pair_to_idx(first, second))
-            })
+            .flat_map(|first| (b'a'..=b'z').map(move |second| byte_pair_to_idx(first, second)))
             .collect();
         let mut p: FxHashSet<_> = vertexes.iter().copied().collect();
         let mut x = FxHashSet::default();
@@ -121,14 +116,15 @@ fn bron_kerbosch(
 ) {
     if p.is_empty() {
         if x.is_empty() {
-            if max_clique.fetch_max(r.len(), Ordering::Relaxed) < r.len() {
-                let mut indexes = r.into_iter().collect::<Vec<_>>();
-                indexes.sort_unstable();
-                indexes.into_iter().map(idx_to_byte_pair).for_each(|pair| {
-                    print!("{},", unsafe { std::str::from_utf8_unchecked(&pair) });
-                });
-                println!("");
-            }
+            // if max_clique.fetch_max(r.len(), Ordering::Relaxed) < r.len() {
+            //     let mut indexes = r.into_iter().collect::<Vec<_>>();
+            //     indexes.sort_unstable();
+            //     indexes.into_iter().map(idx_to_byte_pair).for_each(|pair| {
+            //         print!("{},", unsafe { std::str::from_utf8_unchecked(&pair) });
+            //     });
+            //     println!("");
+            // }
+            max_clique.fetch_max(r.len(), Ordering::Relaxed);
         }
         return;
     }
