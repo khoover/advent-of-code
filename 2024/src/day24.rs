@@ -1,10 +1,8 @@
 use std::collections::{hash_map::Entry, VecDeque};
 
 use arrayvec::ArrayVec;
-use memchr::arch::all;
 
 use super::*;
-use rayon::prelude::*;
 use rustc_hash::FxHashMap;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -131,7 +129,7 @@ fn compute_circuit(
 pub fn part1(s: &str) -> u64 {
     let mut variables = FxHashMap::<[u8; 3], Variable>::default();
     let (initial_variables, gates) = s.split_once("\n\n").unwrap();
-    let mut gates = gates
+    let gates = gates
         .lines()
         .map(Gate::from_line)
         .enumerate()
@@ -147,7 +145,7 @@ pub fn part1(s: &str) -> u64 {
             triple.0
         })
         .collect::<Vec<_>>();
-    let mut new_values = initial_variables
+    let new_values = initial_variables
         .lines()
         .map(|line| {
             let bytes = line.as_bytes();
@@ -168,7 +166,7 @@ pub fn part1(s: &str) -> u64 {
 pub fn part2(s: &str) -> String {
     let mut variables = FxHashMap::<[u8; 3], Variable>::default();
     let (initial_variables, gates) = s.split_once("\n\n").unwrap();
-    let mut gates = gates
+    let gates = gates
         .lines()
         .map(Gate::from_line)
         .enumerate()
@@ -184,7 +182,7 @@ pub fn part2(s: &str) -> String {
             triple.0
         })
         .collect::<Vec<_>>();
-    let mut new_values = initial_variables
+    let new_values = initial_variables
         .lines()
         .map(|line| {
             let bytes = line.as_bytes();

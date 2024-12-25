@@ -2,12 +2,6 @@ use super::*;
 
 use itertools::{Either, Itertools};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-struct Lock([u8; 5]);
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-struct Key([u8; 5]);
-
 #[aoc(day25, part1)]
 pub fn part1(input: &str) -> usize {
     let (keys, locks) = input

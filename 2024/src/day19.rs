@@ -94,8 +94,7 @@ fn recursive_sum(
 
 #[aoc(day19, part2, Dash)]
 pub fn part2_dash((trie, targets): &(Trie<u8, usize>, String)) -> usize {
-    let count_cache: DashMap<ArrayVec<u8, 60>, usize, _> =
-        DashMap::with_hasher(FxBuildHasher::default());
+    let count_cache: DashMap<ArrayVec<u8, 60>, usize, _> = DashMap::with_hasher(FxBuildHasher);
 
     targets
         .par_lines()

@@ -10,12 +10,6 @@ const fn byte_pair_to_idx(first: u8, second: u8) -> usize {
     (first - b'a') as usize * 32 + (second - b'a') as usize
 }
 
-const fn idx_to_byte_pair(idx: usize) -> [u8; 2] {
-    let second = (idx % 32) as u8 + b'a';
-    let first = (idx / 32) as u8 + b'a';
-    [first, second]
-}
-
 const TA_INDEX: usize = byte_pair_to_idx(b't', b'a');
 const TZ_INDEX: usize = byte_pair_to_idx(b't', b'z');
 const UPPER: usize = 25 * 32 + 25 + 1;

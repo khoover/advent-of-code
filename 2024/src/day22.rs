@@ -138,13 +138,12 @@ pub fn part2_scope(input: &str) -> u64 {
 
 #[aoc(day22, part2, DashMap)]
 pub fn part2_dash(s: &str) -> u64 {
-    let total_profits = DashMap::<[i8; 4], u64, _>::with_hasher(FxBuildHasher::default());
+    let total_profits = DashMap::<[i8; 4], u64, _>::with_hasher(FxBuildHasher);
 
     s.par_lines()
         .map(|line| line.parse::<u64>().unwrap())
         .for_each(|mut secret| {
-            let mut has_seen =
-                FxHashSet::<[i8; 4]>::with_capacity_and_hasher(2000, FxBuildHasher::default());
+            let mut has_seen = FxHashSet::<[i8; 4]>::with_capacity_and_hasher(2000, FxBuildHasher);
             let mut previous_price = (secret % 10) as i8;
             secret = evolve(secret);
             let mut price = (secret % 10) as i8;
