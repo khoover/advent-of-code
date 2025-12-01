@@ -21,32 +21,23 @@ fn part1(s: &str) -> Result<u64> {
 }
 
 fn part2(s: &str) -> Result<u64> {
-    let mut acc = 50_i16;
+    let mut acc = 50_u32 + (u32::MAX / 2).next_multiple_of(100);
     let mut count = 0_u64;
     for l in s.lines() {
         let bytes = l.as_bytes();
-        let coeff: i16 = match bytes[0] {
-            b'R' => 1,
-            b'L' => -1,
-            _ => unreachable!(),
-        };
-        let mut num: u64 = unsafe { str::from_utf8_unchecked(&bytes[1..]) }.parse()?;
-        if num >= 100 {
-            count += num / 100;
-            num %= 100;
-        }
+        let num: u32 = unsafe { str::from_utf8_unchecked(&bytes[1..]) }.parse()?;
         let old_acc = acc;
-        acc += num as i16 * coeff;
-        if acc >= 100 {
-            count += 1;
-            acc -= 100;
-        } else if acc < 0 {
-            if old_acc != 0 {
-                count += 1;
+        match bytes[0] {
+            b'R' => {
+                acc += num;
+                count +=
+                    u32::abs_diff(u32::div_euclid(old_acc, 100), u32::div_euclid(acc, 100)) as u64;
             }
-            acc += 100;
-        } else if acc == 0 {
-            count += 1;
+            b'L' => {
+                acc -= num;
+                count += u32::abs_diff(u32::div_ceil(old_acc, 100), u32::div_ceil(acc, 100)) as u64;
+            }
+            _ => unreachable!(),
         }
     }
     Ok(count)
