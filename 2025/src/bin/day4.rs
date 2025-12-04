@@ -1,6 +1,6 @@
-use std::collections::{HashSet, VecDeque};
+use std::collections::VecDeque;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use aoc_2025::run_day;
 
 fn part1(s: &str) -> Result<u64> {
