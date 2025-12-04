@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 
 use anyhow::{Context, Result};
 use aoc_2025::run_day;
@@ -47,52 +47,62 @@ fn grid_iter(
     })
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+struct TileState {
+    has_wall: bool,
+    neighbour_wall_count: u8,
+}
+
+impl TileState {
+    fn is_flippable(self) -> bool {
+        self.has_wall && self.neighbour_wall_count < 4
+    }
+}
+
 fn part2(s: &str) -> Result<u64> {
     let lines: Vec<_> = s.trim().lines().map(|l| l.as_bytes()).collect();
     let height = lines.len();
     let width = lines[0].len();
     let to_linear = |row: usize, col: usize| -> usize { row * height + col };
-    let mut state: Vec<u8> = lines
-        .into_iter()
-        .flat_map(|l| l.iter().copied().map(|b| if b == b'@' { 1 } else { 0 }))
+
+    let mut state: Vec<TileState> = lines
+        .iter()
+        .copied()
+        .enumerate()
+        .flat_map(|(row, l)| {
+            let line_ref = &lines;
+            l.iter()
+                .copied()
+                .enumerate()
+                .map(move |(col, b)| TileState {
+                    has_wall: b == b'@',
+                    neighbour_wall_count: grid_iter(row, col, width, height)
+                        .filter(|&(row, col)| line_ref[row][col] == b'@')
+                        .count() as u8,
+                })
+        })
         .collect();
-    let mut to_flip: HashSet<(usize, usize)> = HashSet::new();
-    let mut just_flipped: HashSet<(usize, usize)> = HashSet::new();
-    let mut acc: u64 = 0;
+
+    let mut to_flip: VecDeque<(usize, usize)> = VecDeque::new();
     for row in 0..height {
         for col in 0..width {
-            if state[to_linear(row, col)] == 1
-                && grid_iter(row, col, width, height)
-                    .map(|(row, col)| state[to_linear(row, col)])
-                    .sum::<u8>()
-                    < 4
-            {
-                to_flip.insert((row, col));
-                acc += 1;
+            if state[to_linear(row, col)].is_flippable() {
+                to_flip.push_back((row, col));
             }
         }
     }
 
-    while !to_flip.is_empty() {
-        for idx in to_flip.iter().copied().map(|(a, b)| to_linear(a, b)) {
-            state[idx] = 0;
-        }
-        std::mem::swap(&mut to_flip, &mut just_flipped);
-        to_flip.clear();
-        just_flipped = just_flipped
-            .into_iter()
-            .flat_map(|(row, col)| grid_iter(row, col, width, height))
-            .collect();
-        for (row, col) in just_flipped.drain() {
-            if state[to_linear(row, col)] == 1
-                && grid_iter(row, col, width, height)
-                    .map(|(row, col)| state[to_linear(row, col)])
-                    .sum::<u8>()
-                    < 4
-            {
-                to_flip.insert((row, col));
-                acc += 1;
-            }
+    let mut acc: u64 = 0;
+    while let Some((row, col)) = to_flip.pop_front() {
+        let idx = to_linear(row, col);
+        if state[idx].is_flippable() {
+            acc += 1;
+            state[idx].has_wall = false;
+            to_flip.extend(grid_iter(row, col, width, height).filter(|&(row, col)| {
+                let idx = to_linear(row, col);
+                state[idx].neighbour_wall_count -= 1;
+                state[idx].has_wall && state[idx].neighbour_wall_count == 3
+            }));
         }
     }
     Ok(acc)
