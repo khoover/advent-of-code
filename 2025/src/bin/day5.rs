@@ -4,7 +4,7 @@ use itertools::Itertools;
 
 fn part1(s: &str) -> Result<u64> {
     let mut lines = s.trim().lines();
-    let ranges = make_ranges(lines.by_ref().take_while(|l| !l.is_empty()));
+    let ranges: Vec<_> = make_ranges(lines.by_ref().take_while(|l| !l.is_empty())).collect();
     Ok(lines
         .map(|l| l.parse::<u64>().unwrap())
         .filter(|id| match ranges.binary_search_by_key(id, |(a, _)| *a) {
@@ -16,14 +16,14 @@ fn part1(s: &str) -> Result<u64> {
 }
 
 // Also sorted by increasing start
-fn make_ranges<'a>(lines: impl IntoIterator<Item = &'a str>) -> Vec<(u64, u64)> {
+fn make_ranges<'a>(lines: impl IntoIterator<Item = &'a str>) -> impl Iterator<Item = (u64, u64)> {
     lines
         .into_iter()
         .map(|line| {
             let (a, b) = line.split_once('-').unwrap();
             (a.parse::<u64>().unwrap(), b.parse::<u64>().unwrap())
         })
-        .sorted_unstable_by_key(|(a, _)| *a)
+        .sorted_unstable()
         .peekable()
         .batching(|it| {
             let (start, mut end) = it.next()?;
@@ -34,13 +34,12 @@ fn make_ranges<'a>(lines: impl IntoIterator<Item = &'a str>) -> Vec<(u64, u64)> 
             }
             Some((start, end))
         })
-        .collect()
 }
 
 fn part2(s: &str) -> Result<u64> {
-    let mut lines = s.trim().lines();
-    let ranges = make_ranges(lines.by_ref().take_while(|l| !l.is_empty()));
-    Ok(ranges.into_iter().map(|(a, b)| b - a + 1).sum())
+    Ok(make_ranges(s.trim().lines().take_while(|l| !l.is_empty()))
+        .map(|(a, b)| b - a + 1)
+        .sum())
 }
 
 pub fn main() -> Result<()> {
