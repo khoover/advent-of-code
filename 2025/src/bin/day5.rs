@@ -27,16 +27,10 @@ fn make_ranges<'a>(lines: impl IntoIterator<Item = &'a str>) -> Vec<(u64, u64)> 
         .peekable()
         .batching(|it| {
             let (start, mut end) = it.next()?;
-            loop {
-                let Some((next_start, next_end)) = it.peek() else {
-                    break;
-                };
-                if start <= *next_start && *next_start <= end {
-                    end = end.max(*next_end);
-                    let _ = it.next();
-                } else {
-                    break;
-                }
+            while let Some((_, next_end)) =
+                it.next_if(|(next_start, _)| start <= *next_start && *next_start <= end)
+            {
+                end = end.max(next_end);
             }
             Some((start, end))
         })
