@@ -8,3 +8,7 @@ anyhow = "1.0.100"
 bumpalo = { version = "3.19.0", default-features = false, features = ["boxed", "collections", "serde", "std"] }
 clap = { version = "4.5.53", features = ["cargo"] }
 itertools = "0.14.0"
+
+[profile.release]
+lto = true
+codegen_units = 1
