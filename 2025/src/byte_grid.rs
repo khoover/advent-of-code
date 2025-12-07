@@ -1,5 +1,6 @@
 use std::ops::{Index, IndexMut};
 
+use super::byte_search::find;
 use anyhow::{Result, anyhow};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -73,12 +74,7 @@ impl Grid {
     }
 
     pub fn find(&self, val: u8) -> Option<(usize, usize)> {
-        self.data
-            .iter()
-            .copied()
-            .enumerate()
-            .find(|(_, x)| *x == val)
-            .map(|(idx, _)| (idx / self.width, idx % self.width))
+        find(self.data.as_slice(), val).map(|idx| (idx / self.width, idx % self.width))
     }
 }
 
