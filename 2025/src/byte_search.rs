@@ -55,14 +55,14 @@ unsafe fn find_x86(mut arr: &[u8], target: u8) -> Option<usize> {
         unsafe {
             let target_vec = _mm_set1_epi8(target as i8);
             for (offset, chunk) in (0..arr.len()).step_by(64).zip(chunks) {
-                let inner_offsets = [0, 16, 32, 48];
-                let data = inner_offsets
-                    .map(|idx| _mm_loadu_sil128(&chunk[idx] as *const u8 as *const __mm128i));
+                let data: [__m128i; 4] = std::array::from_fn(|i| {
+                    _mm_loadu_si128(&chunk[i * 16] as *const u8 as *const __m128i)
+                });
                 let eq_results = data.map(|v| _mm_cmpeq_epi8(target_vec, v));
                 let bitsets = eq_results.map(|v| _mm_movemask_epi8(v));
-                for (inner_offset, bitset) in inner_offsets.into_iter().zip(bitsets) {
+                for (i, bitset) in bitsets.into_iter().enumerate() {
                     if bitset != 0 {
-                        return Some(offset + inner_offset + bitset.trailing_zeros() as usize);
+                        return Some(offset + i * 16 + bitset.trailing_zeros() as usize);
                     }
                 }
             }
