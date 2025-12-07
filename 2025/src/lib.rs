@@ -4,6 +4,7 @@ use anyhow::{Context, Result};
 use clap::{Arg, ArgAction, Command, value_parser};
 
 pub mod byte_grid;
+pub mod byte_search;
 
 pub fn run_day<F1, R1, F2, R2>(part1: F1, part2: F2) -> Result<()>
 where
