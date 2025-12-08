@@ -1,7 +1,7 @@
 use std::ops::{Index, IndexMut};
 
-use super::byte_search::find;
 use anyhow::{Result, anyhow};
+use memchr::memchr;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Grid {
@@ -74,7 +74,7 @@ impl Grid {
     }
 
     pub fn find(&self, val: u8) -> Option<(usize, usize)> {
-        find(self.data.as_slice(), val).map(|idx| (idx / self.width, idx % self.width))
+        memchr(val, self.data.as_slice()).map(|idx| (idx / self.width, idx % self.width))
     }
 }
 
