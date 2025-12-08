@@ -17,17 +17,16 @@ fn part1_impl(s: &str, pairs: usize) -> Result<u64> {
         .collect::<Result<_>>()?;
     let count = coords.len();
     let mut disjoint_set = QuickUnionUf::<UnionBySize>::new(count);
-    let mut pair_iter = coords
+    coords
         .into_iter()
         .enumerate()
         .tuple_combinations::<((usize, Coord), (usize, Coord))>()
         .sorted_unstable_by_key(|(a, b)| a.1.distance(&b.1))
-        .map(|(a, b)| (a.0, b.0));
-
-    for _ in 0..pairs {
-        let pair = pair_iter.next().context("Ran out of pairs")?;
-        disjoint_set.union(pair.0, pair.1);
-    }
+        .map(|(a, b)| (a.0, b.0))
+        .take(pairs)
+        .for_each(|(a, b)| {
+            disjoint_set.union(a, b);
+        });
 
     let sets: HashSet<_> = (0..count).map(|idx| disjoint_set.find(idx)).collect();
     Ok(sets
