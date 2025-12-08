@@ -39,8 +39,8 @@ fn part2(s: &str) -> Result<u64> {
         let grid_row = &grid[row_idx];
         for col_idx in 0..grid.width() {
             if grid_row[col_idx] == b'^' {
-                if let Some(x) = next.get_mut(col_idx.wrapping_sub(1)) {
-                    *x += curr[col_idx];
+                if let Some(idx) = col_idx.checked_sub(1) {
+                    next[idx] += curr[col_idx];
                 }
                 if let Some(x) = next.get_mut(col_idx + 1) {
                     *x += curr[col_idx];
