@@ -21,9 +21,8 @@ fn part1_impl(s: &str, pairs: usize) -> Result<u64> {
         .into_iter()
         .enumerate()
         .tuple_combinations::<((usize, Coord), (usize, Coord))>()
-        .sorted_unstable_by_key(|(a, b)| a.1.distance(&b.1))
+        .k_smallest_relaxed_by_key(pairs, |(a, b)| a.1.distance(&b.1))
         .map(|(a, b)| (a.0, b.0))
-        .take(pairs)
         .for_each(|(a, b)| {
             disjoint_set.union(a, b);
         });
