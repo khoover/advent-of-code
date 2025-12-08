@@ -1,4 +1,4 @@
-use std::{fmt::Display, fs::read_to_string, path::PathBuf};
+use std::{fmt::Display, fs::read_to_string, path::PathBuf, time::Instant};
 
 use anyhow::{Context, Result};
 use clap::{Arg, ArgAction, Command, value_parser};
@@ -31,12 +31,25 @@ where
     let s =
         read_to_string(path).with_context(|| format!("Failed to read from {}", path.display()))?;
     if matches.get_flag("part_two") {
-        part2(&s).map(|r| {
-            println!("{}", r);
-        })
+        let start = Instant::now();
+        let res = part2(&s);
+        let duration = (Instant::now() - start).as_secs_f64();
+        render_result_and_duration(duration, res)
     } else {
-        part1(&s).map(|r| {
-            println!("{}", r);
-        })
+        let start = Instant::now();
+        let res = part1(&s);
+        let duration = (Instant::now() - start).as_secs_f64();
+        render_result_and_duration(duration, res)
     }
+}
+
+fn render_result_and_duration<T: Display>(duration: f64, res: Result<T>) -> Result<()> {
+    if duration > 5.0 {
+        println!("Duration: {:.3}s", duration);
+    } else {
+        println!("Duration: {:.3}ms", duration * 1000.0);
+    }
+    res.map(|r| {
+        println!("{}", r);
+    })
 }
