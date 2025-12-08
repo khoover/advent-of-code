@@ -1,4 +1,4 @@
-use std::{collections::HashSet, str::FromStr};
+use std::str::FromStr;
 
 use anyhow::{Context, Result, anyhow};
 use aoc_2025::run_day;
@@ -15,10 +15,10 @@ fn part1_impl(s: &str, pairs: usize) -> Result<u64> {
         .lines()
         .map(|l| l.parse::<Coord>())
         .collect::<Result<_>>()?;
-    let count = coords.len();
-    let mut disjoint_set = QuickUnionUf::<UnionBySize>::new(count);
+    let mut disjoint_set = QuickUnionUf::<UnionBySize>::new(coords.len());
     coords
-        .into_iter()
+        .iter()
+        .copied()
         .enumerate()
         .tuple_combinations::<((usize, Coord), (usize, Coord))>()
         .k_smallest_relaxed_by_key(pairs, |(a, b)| a.1.distance(&b.1))
@@ -27,10 +27,14 @@ fn part1_impl(s: &str, pairs: usize) -> Result<u64> {
             disjoint_set.union(a, b);
         });
 
-    let sets: HashSet<_> = (0..count).map(|idx| disjoint_set.find(idx)).collect();
-    Ok(sets
-        .into_iter()
-        .map(|key| disjoint_set.get(key).size() as u64)
+    Ok((0..disjoint_set.size())
+        .map(|idx| {
+            let root = disjoint_set.find(idx);
+            let size = disjoint_set.get(root).size();
+            (root, size)
+        })
+        .unique_by(|(idx, _)| *idx)
+        .map(|(_, x)| x as u64)
         .k_largest_relaxed(3)
         .product())
 }
@@ -41,15 +45,15 @@ fn part2(s: &str) -> Result<u64> {
         .lines()
         .map(|l| l.parse::<Coord>())
         .collect::<Result<_>>()?;
-    let count = coords.len();
-    let mut disjoint_set = QuickUnionUf::<UnionBySize>::new(count);
+    let mut disjoint_set = QuickUnionUf::<UnionBySize>::new(coords.len());
     let mut pair_iter = coords
-        .into_iter()
+        .iter()
+        .copied()
         .enumerate()
         .tuple_combinations::<((usize, Coord), (usize, Coord))>()
         .sorted_unstable_by_key(|(a, b)| a.1.distance(&b.1));
 
-    let mut connections_remaining = count - 1;
+    let mut connections_remaining = coords.len() - 1;
     loop {
         let pair = pair_iter.next().context("Ran out of pairs")?;
         if disjoint_set.union(pair.0.0, pair.1.0) {
