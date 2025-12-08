@@ -47,7 +47,7 @@ unsafe fn find_x86(mut arr: &[u8], target: u8) -> Option<usize> {
 
     let mut base_index = 0;
 
-    if is_x86_feature_detcted!("sse2") {
+    if is_x86_feature_detected!("sse2") {
         use core::arch::x86_64::*;
 
         let (chunks, remainder) = arr.as_chunks::<64>();
