@@ -1,10 +1,7 @@
 use anyhow::{Context, Error as AnyhowError, Result, anyhow};
 use aoc_2025::run_day;
 use itertools::Itertools;
-use quadtree_rs::{
-    Quadtree,
-    area::{Area, AreaBuilder},
-};
+use quadtree_rs::area::{Area, AreaBuilder};
 
 fn part1(s: &str) -> Result<u64> {
     let points = s
@@ -83,20 +80,20 @@ fn part2(s: &str) -> Result<u64> {
         })
         .collect::<Result<_>>()?;
 
-    let mut qt = Quadtree::<u32, ()>::new(17);
-    for (a, b) in points.iter().copied().circular_tuple_windows() {
-        let anchor = (a.0.min(b.0), a.1.min(b.1));
-        let dimensions = (a.0.abs_diff(b.0) + 1, a.1.abs_diff(b.1) + 1);
-        qt.insert(
+    let edges: Vec<Area<u32>> = points
+        .iter()
+        .copied()
+        .circular_tuple_windows()
+        .map(|(a, b)| {
+            let anchor = (a.0.min(b.0), a.1.min(b.1));
+            let dimensions = (a.0.abs_diff(b.0) + 1, a.1.abs_diff(b.1) + 1);
             AreaBuilder::default()
                 .anchor(anchor.into())
                 .dimensions(dimensions)
                 .build()
-                .map_err(|s| anyhow!(s))?,
-            (),
-        );
-        qt.insert_pt(a.into(), ());
-    }
+                .map_err(|s| anyhow!(s))
+        })
+        .collect::<Result<_>>()?;
 
     points
         .iter()
@@ -106,7 +103,7 @@ fn part2(s: &str) -> Result<u64> {
             let Some(interior) = get_interior(a, b) else {
                 return true;
             };
-            qt.query(interior).next().is_none()
+            !edges.iter().any(|area| area.intersects(interior))
         })
         .map(|(a, b)| get_area((a.0 as u64, a.1 as u64), (b.0 as u64, b.1 as u64)))
         .max()
