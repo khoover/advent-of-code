@@ -55,11 +55,11 @@ fn part2(s: &str) -> Result<u64> {
 
     let mut connections_remaining = coords.len() - 1;
     loop {
-        let pair = pair_iter.next().context("Ran out of pairs")?;
-        if disjoint_set.union(pair.0.0, pair.1.0) {
+        let (a, b) = pair_iter.next().context("Ran out of pairs")?;
+        if disjoint_set.union(a.0, b.0) {
             connections_remaining -= 1;
             if connections_remaining == 0 {
-                return Ok(pair.0.1.x as u64 * pair.1.1.x as u64);
+                return Ok(a.1.x as u64 * b.1.x as u64);
             }
         }
     }
