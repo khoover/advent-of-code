@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::collections::{HashSet, VecDeque};
 
 use anyhow::{Context, Result};
 use aoc_2025::run_day;
@@ -64,8 +64,12 @@ impl Machine {
     fn solve_min_flips(&self) -> u64 {
         let mut search_spaces: VecDeque<(u16, u64)> = VecDeque::new();
         search_spaces.push_back((0, 0));
+        let mut seen = HashSet::new();
         loop {
             let (state, flips) = search_spaces.pop_front().unwrap();
+            if !seen.insert(state) {
+                continue;
+            }
             for &switch in self.switches.iter() {
                 let new_state = switch ^ state;
                 if new_state == self.desired_light_state {
