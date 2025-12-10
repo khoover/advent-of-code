@@ -66,15 +66,14 @@ impl Machine {
         search_spaces.push_back((0, 0));
         loop {
             let (state, flips) = search_spaces.pop_front().unwrap();
-            if state == self.desired_light_state {
-                return flips;
+            for &switch in self.switches.iter() {
+                let new_state = switch ^ state;
+                if new_state == self.desired_light_state {
+                    return flips + 1;
+                } else {
+                    search_spaces.push_back((new_state, flips + 1));
+                }
             }
-            search_spaces.extend(
-                self.switches
-                    .iter()
-                    .copied()
-                    .map(|switch| (switch ^ state, flips + 1)),
-            );
         }
     }
 }
