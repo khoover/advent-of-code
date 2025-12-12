@@ -1,37 +1,36 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use aoc_2025::run_day;
-use std::collections::HashMap;
+use fnv::FnvHashMap;
 
 type NodeId = [u8; 3];
-type Graph = HashMap<NodeId, Vec<NodeId>>;
+type Graph = FnvHashMap<NodeId, Vec<NodeId>>;
 
 const END: NodeId = [b'o', b'u', b't'];
 
 fn part1(s: &str) -> Result<u64> {
     const START: NodeId = [b'y', b'o', b'u'];
     let graph = parse_graph(s)?;
-    let mut paths_to_out: HashMap<NodeId, u64> = HashMap::with_capacity(graph.len());
+    let mut paths_to_out: FnvHashMap<NodeId, u64> =
+        FnvHashMap::with_capacity_and_hasher(graph.len(), Default::default());
     paths_to_out.insert(END, 1);
     Ok(recursive_path_search(&mut paths_to_out, &graph, START))
 }
 
 fn parse_graph(s: &str) -> Result<Graph> {
-    s.trim()
-        .lines()
+    s.lines()
+        .filter(|line| line.len() > 5)
         .map(|line| {
-            let (src, dsts) = line.split_once(": ").context("Malformed line")?;
-            let dsts = dsts
-                .as_bytes()
+            let dsts = line.as_bytes()[5..]
                 .windows(3)
                 .step_by(4)
                 .map(|window| window.try_into().map_err(Into::into))
                 .collect::<Result<_>>()?;
-            Ok((src.as_bytes()[..3].try_into()?, dsts))
+            Ok((line.as_bytes()[..3].try_into()?, dsts))
         })
         .collect()
 }
 
-fn recursive_path_search(memo: &mut HashMap<NodeId, u64>, graph: &Graph, start: NodeId) -> u64 {
+fn recursive_path_search(memo: &mut FnvHashMap<NodeId, u64>, graph: &Graph, start: NodeId) -> u64 {
     if let Some(&count) = memo.get(&start) {
         return count;
     }
@@ -55,7 +54,8 @@ fn part2(s: &str) -> Result<u64> {
     const DAC: NodeId = [b'd', b'a', b'c'];
     const FFT: NodeId = [b'f', b'f', b't'];
     let graph = parse_graph(s)?;
-    let mut memo_cache: HashMap<NodeId, u64> = HashMap::with_capacity(graph.len());
+    let mut memo_cache: FnvHashMap<NodeId, u64> =
+        FnvHashMap::with_capacity_and_hasher(graph.len(), Default::default());
 
     let (dac_to_fft, svr_to_fft) = {
         memo_cache.insert(FFT, 1);
