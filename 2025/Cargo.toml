@@ -7,6 +7,7 @@ edition = "2024"
 anyhow = "1.0.100"
 bumpalo = { version = "3.19.0", default-features = false, features = ["boxed", "collections", "serde", "std"] }
 clap = { version = "4.5.53", features = ["cargo"] }
+fnv = "1.0.7"
 good_lp = { version = "1.14.2", features = ["microlp"], default-features = false }
 itertools = "0.14.0"
 memchr = "2.7.6"
