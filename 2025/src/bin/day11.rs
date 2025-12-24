@@ -57,21 +57,19 @@ fn part2(s: &str) -> Result<u64> {
     let mut memo_cache: FnvHashMap<NodeId, u64> =
         FnvHashMap::with_capacity_and_hasher(graph.len(), Default::default());
 
-    let (dac_to_fft, svr_to_fft) = {
-        memo_cache.insert(FFT, 1);
+    memo_cache.insert(FFT, 1);
+    let (to_fft_coeff, dac_start, end_start) = {
         let dac = recursive_path_search(&mut memo_cache, &graph, DAC);
-        let svr = recursive_path_search(&mut memo_cache, &graph, SERVER);
-        memo_cache.clear();
-        (dac, svr)
+        // For the problem to have an answer, either dac -> fft or fft -> dac is unreachable.
+        // Will split into cases based on that.
+        if dac != 0 {
+            (dac, SERVER, FFT)
+        } else {
+            let svr = recursive_path_search(&mut memo_cache, &graph, SERVER);
+            (svr, FFT, DAC)
+        }
     };
-
-    // For the problem to have an answer, either dac -> fft or fft -> dac is unreachable.
-    // Will split into cases based on that.
-    let (to_fft_coeff, dac_start, end_start) = if dac_to_fft == 0 {
-        (svr_to_fft, FFT, DAC)
-    } else {
-        (dac_to_fft, SERVER, FFT)
-    };
+    memo_cache.clear();
 
     memo_cache.insert(DAC, 1);
     let to_dac_coeff = recursive_path_search(&mut memo_cache, &graph, dac_start);
