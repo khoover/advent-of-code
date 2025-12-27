@@ -31,22 +31,33 @@ fn get_argmax(arr: &[u8]) -> Option<(usize, u8)> {
     Some((idx, max))
 }
 
+const POWERS_OF_10: [u64; 12] = [
+    100_000_000_000,
+    10_000_000_000,
+    1_000_000_000,
+    100_000_000,
+    10_000_000,
+    1_000_000,
+    100_000,
+    10_000,
+    1_000,
+    100,
+    10,
+    1,
+];
+
 fn part2(s: &str) -> Result<u64> {
-    s.trim()
+    Ok(s.trim()
         .lines()
         .map(|line| {
             let mut view = line.as_bytes();
-            let mut digits: [u8; 12] = [0; 12];
-            for i in 0..12 {
-                let (idx, byte) = get_argmax(&view[..view.len() - (11 - i)]).unwrap();
-                digits[i] = byte;
+            (0..12).rfold(0_u64, |total, i| {
+                let (idx, byte) = get_argmax(&view[..view.len() - i]).unwrap();
                 view = &view[idx + 1..];
-            }
-            unsafe { std::str::from_utf8_unchecked(&digits) }
-                .parse::<u64>()
-                .with_context(|| format!("Failed to parse {:?}", digits))
+                total + (byte as u64) * POWERS_OF_10[i]
+            })
         })
-        .sum()
+        .sum())
 }
 
 pub fn main() -> Result<()> {
