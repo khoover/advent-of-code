@@ -54,7 +54,7 @@ fn part2(s: &str) -> Result<u64> {
             (0..12).rfold(0_u64, |total, i| {
                 let (idx, byte) = get_argmax(&view[..view.len() - i]).unwrap();
                 view = &view[idx + 1..];
-                total + (byte as u64) * POWERS_OF_10[i]
+                total + ((byte - b'0') as u64) * POWERS_OF_10[i]
             })
         })
         .sum())
