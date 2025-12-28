@@ -32,18 +32,18 @@ fn get_argmax(arr: &[u8]) -> Option<(usize, u8)> {
 }
 
 const POWERS_OF_10: [u64; 12] = [
-    100_000_000_000,
-    10_000_000_000,
-    1_000_000_000,
-    100_000_000,
-    10_000_000,
-    1_000_000,
-    100_000,
-    10_000,
-    1_000,
-    100,
-    10,
     1,
+    10,
+    100,
+    1_000,
+    10_000,
+    100_000,
+    1_000_000,
+    10_000_000,
+    100_000_000,
+    1_000_000_000,
+    10_000_000_000,
+    100_000_000_000,
 ];
 
 fn part2(s: &str) -> Result<u64> {
@@ -51,7 +51,7 @@ fn part2(s: &str) -> Result<u64> {
         .lines()
         .map(|line| {
             let mut view = line.as_bytes();
-            (0..12).rfold(0_u64, |total, i| {
+            (0..12).rev().fold(0_u64, |total, i| {
                 let (idx, byte) = get_argmax(&view[..view.len() - i]).unwrap();
                 view = &view[idx + 1..];
                 total + ((byte - b'0') as u64) * POWERS_OF_10[i]
