@@ -24,15 +24,12 @@ fn make_ranges<'a>(lines: impl IntoIterator<Item = &'a str>) -> impl Iterator<It
             (a.parse::<u64>().unwrap(), b.parse::<u64>().unwrap())
         })
         .sorted_unstable()
-        .peekable()
-        .batching(|it| {
-            let (start, mut end) = it.next()?;
-            while let Some((_, next_end)) =
-                it.next_if(|(next_start, _)| start <= *next_start && *next_start <= end)
-            {
-                end = end.max(next_end);
+        .coalesce(|(start, end), (next_start, next_end)| {
+            if start <= next_start && next_start <= end {
+                Ok((start, end.max(next_end)))
+            } else {
+                Err(((start, end), (next_start, next_end)))
             }
-            Some((start, end))
         })
 }
 
