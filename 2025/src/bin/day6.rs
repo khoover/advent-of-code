@@ -1,45 +1,74 @@
+use std::ops::Range;
+
 use anyhow::{Context, Result, anyhow};
+use aoc_2025::byte_grid::Grid;
 use aoc_2025::run_day;
 use itertools::Itertools;
+use memchr::memchr2_iter;
 
 fn part1(s: &str) -> Result<u64> {
-    let mut lines = s.trim().lines();
-    let op_types = lines
-        .next_back()
-        .context("Expected at least one line")?
-        .split_whitespace()
-        .map(|s| match s {
-            "*" => Ok(OpType::Product),
-            "+" => Ok(OpType::Sum),
-            _ => Err(anyhow!("Unexpected op type")),
+    let mut lines = s.lines();
+    let op_types_and_ranges = get_op_types(
+        lines
+            .next_back()
+            .context("Expected at least one line")?
+            .as_bytes(),
+    );
+    let grid = Grid::from_input_lines(lines)?;
+    let mut acc = op_types_and_ranges
+        .iter()
+        .map(|(_, op_type)| match op_type {
+            OpType::Product => 1_u64,
+            OpType::Sum => 0_u64,
         })
-        .collect::<Result<Vec<_>, _>>()?;
-    lines
-        .map(|s| {
-            s.split_whitespace()
-                .map(|c| c.parse::<u64>())
-                .collect::<Result<Vec<_>, _>>()
-        })
-        .reduce(|totals, row| {
-            Ok(totals?
-                .into_iter()
-                .zip(row?.into_iter())
-                .zip(op_types.iter().copied())
-                .map(|((a, b), op)| match op {
-                    OpType::Product => a * b,
-                    OpType::Sum => a + b,
-                })
-                .collect())
-        })
-        .transpose()?
-        .context("Expected at least one line")
-        .map(|v| v.into_iter().sum())
+        .collect_vec();
+    for row in (0..grid.height()).map(|i| &grid[i]) {
+        for (acc, (range, op_type)) in acc.iter_mut().zip_eq(op_types_and_ranges.iter().cloned()) {
+            let num = parse_ascii_bytes(&row[range]);
+            match op_type {
+                OpType::Product => *acc *= num,
+                OpType::Sum => *acc += num,
+            }
+        }
+    }
+    Ok(acc.into_iter().sum())
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
 enum OpType {
     Product,
     Sum,
+}
+
+fn get_op_types(line: &[u8]) -> Vec<(Range<usize>, OpType)> {
+    let mut out = Vec::new();
+    let final_start = memchr2_iter(b'+', b'*', line).reduce(|start, end| {
+        let range = start..end;
+        let op_type = if line[start] == b'*' {
+            OpType::Product
+        } else {
+            OpType::Sum
+        };
+        out.push((range, op_type));
+        end
+    });
+    if let Some(start) = final_start {
+        let range = start..line.len();
+        let op_type = if line[start] == b'*' {
+            OpType::Product
+        } else {
+            OpType::Sum
+        };
+        out.push((range, op_type));
+    }
+    out
+}
+
+fn parse_ascii_bytes<'a>(it: impl IntoIterator<Item = &'a u8>) -> u64 {
+    it.into_iter()
+        .copied()
+        .filter_map(|x| x.checked_sub(b'0').filter(|digit| *digit < 10))
+        .fold(0_u64, |acc, digit| acc * 10 + digit as u64)
 }
 
 fn part2(s: &str) -> Result<u64> {
@@ -92,7 +121,7 @@ pub fn main() -> Result<()> {
 static INPUT: &str = "123 328  51 64 
  45 64  387 23 
   6 98  215 314
-*   +   *   + ";
+*   +   *   +  ";
 
 #[test]
 fn test_part1() {
