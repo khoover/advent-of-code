@@ -1,20 +1,14 @@
 use std::ops::Range;
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::Result;
 use aoc_2025::byte_grid::Grid;
 use aoc_2025::run_day;
 use itertools::Itertools;
 use memchr::memchr2_iter;
 
 fn part1(s: &str) -> Result<u64> {
-    let mut lines = s.lines();
-    let op_types_and_ranges = get_op_types(
-        lines
-            .next_back()
-            .context("Expected at least one line")?
-            .as_bytes(),
-    );
-    let grid = Grid::from_input_lines(lines)?;
+    let grid = Grid::from_input_lines(s.lines())?;
+    let op_types_and_ranges = get_op_types(&grid[grid.height() - 1]);
     let mut acc = op_types_and_ranges
         .iter()
         .map(|(_, op_type)| match op_type {
@@ -22,7 +16,7 @@ fn part1(s: &str) -> Result<u64> {
             OpType::Sum => 0_u64,
         })
         .collect_vec();
-    for row in (0..grid.height()).map(|i| &grid[i]) {
+    for row in (0..grid.height() - 1).map(|i| &grid[i]) {
         for (acc, (range, op_type)) in acc.iter_mut().zip_eq(op_types_and_ranges.iter().cloned()) {
             let num = parse_ascii_bytes(&row[range]);
             match op_type {
@@ -43,7 +37,7 @@ enum OpType {
 fn get_op_types(line: &[u8]) -> Vec<(Range<usize>, OpType)> {
     let mut out = Vec::new();
     let final_start = memchr2_iter(b'+', b'*', line).reduce(|start, end| {
-        let range = start..end;
+        let range = start..end - 1;
         let op_type = if line[start] == b'*' {
             OpType::Product
         } else {
@@ -72,44 +66,19 @@ fn parse_ascii_bytes<'a>(it: impl IntoIterator<Item = &'a u8>) -> u64 {
 }
 
 fn part2(s: &str) -> Result<u64> {
-    let lines = s.trim().lines().collect::<Vec<_>>();
-    let op_types = lines[lines.len() - 1]
-        .split_whitespace()
-        .map(|s| match s {
-            "*" => Ok(OpType::Product),
-            "+" => Ok(OpType::Sum),
-            _ => Err(anyhow!("Unexpected op type")),
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-    let mut ops = op_types.into_iter();
-    let mut utf8_buf: Vec<u8> = vec![0; lines.len() - 1];
-    Ok((0..lines[0].len())
-        .batching(|it| {
-            let (op, idx) = ops.next().zip(it.next())?;
+    let grid = Grid::from_input_lines(s.lines())?;
+    let op_types_and_ranges = get_op_types(&grid[grid.height() - 1]);
+    let row_range = 0..grid.height() - 1;
 
-            lines.iter().zip(utf8_buf.iter_mut()).for_each(|(l, b)| {
-                *b = l.as_bytes()[idx];
-            });
-            let mut acc = unsafe { std::str::from_utf8_unchecked(&utf8_buf) }
-                .trim()
-                .parse::<u64>()
-                .unwrap();
-
-            for idx in it {
-                lines.iter().zip(utf8_buf.iter_mut()).for_each(|(l, b)| {
-                    *b = l.as_bytes()[idx];
-                });
-                let s = unsafe { std::str::from_utf8_unchecked(&utf8_buf) }.trim();
-                if s.is_empty() {
-                    break;
-                }
-                let x = s.parse::<u64>().unwrap();
-                match op {
-                    OpType::Product => acc *= x,
-                    OpType::Sum => acc += x,
-                }
+    Ok(op_types_and_ranges
+        .into_iter()
+        .map(|(col_range, op_type)| -> u64 {
+            let it =
+                col_range.map(|col| parse_ascii_bytes(grid.col_at_rows(col, row_range.clone())));
+            match op_type {
+                OpType::Product => it.product(),
+                OpType::Sum => it.sum(),
             }
-            Some(acc)
         })
         .sum())
 }
