@@ -1,8 +1,7 @@
-use std::collections::{HashSet, VecDeque};
-
 use anyhow::{Context, Result};
 use aoc_2025::run_day;
 use good_lp::{Expression, ProblemVariables, Solution, SolverModel, default_solver, variable};
+use itertools::Itertools;
 use regex::Regex;
 
 fn part1(s: &str) -> Result<u64> {
@@ -11,75 +10,38 @@ fn part1(s: &str) -> Result<u64> {
     s.trim()
         .lines()
         .map(|s| {
-            let lights = lights_re
+            let desired_state = lights_re
                 .captures(s)
                 .context("Missing lights")?
                 .name("inner")
-                .unwrap()
-                .as_str();
-            let switches = switches_re
-                .captures_iter(s)
-                .map(|capture| capture.name("inner").unwrap().as_str());
-            Machine::from_regex_captures(lights, switches)
-        })
-        .map(|r| r.map(|m| m.solve_min_flips()))
-        .sum()
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct Machine {
-    pub light_state: u16,
-    pub desired_light_state: u16,
-    pub switches: Vec<u16>,
-}
-
-impl Machine {
-    fn from_regex_captures<'a>(
-        desired_light_state: &str,
-        switches: impl IntoIterator<Item = &'a str>,
-    ) -> Result<Self> {
-        let desired_light_state: u16 = desired_light_state
-            .as_bytes()
-            .iter()
-            .copied()
-            .enumerate()
-            .map(|(shift, byte)| if byte == b'#' { 1_u16 << shift } else { 0 })
-            .reduce(|a, b| a | b)
-            .context("Expected non-empty string")?;
-        let switches: Vec<u16> = switches
-            .into_iter()
-            .map(|s| {
+                .context("Broken regex")?
+                .as_str()
+                .as_bytes()
+                .iter()
+                .copied()
+                .enumerate()
+                .map(|(shift, byte)| if byte == b'#' { 1_u16 << shift } else { 0 })
+                .fold(0, |a, b| a | b);
+            let switches = switches_re.captures_iter(s).map(|capture| {
+                let s = capture.name("inner").context("Broken regex")?.as_str();
                 s.split(',')
-                    .map(|idx_str| Ok(1_u16 << idx_str.parse::<u16>()?))
-                    .sum()
-            })
-            .collect::<Result<_>>()?;
-        Ok(Self {
-            light_state: 0,
-            desired_light_state,
-            switches,
-        })
-    }
+                    .map(|idx_str| idx_str.parse::<u16>().map(|idx| 1_u16 << idx))
+                    .fold_ok(0, |a, b| a | b)
+                    .map_err(anyhow::Error::from)
+            });
 
-    fn solve_min_flips(&self) -> u64 {
-        let mut search_spaces: VecDeque<(u16, u64)> = VecDeque::new();
-        search_spaces.push_back((0, 0));
-        let mut seen = HashSet::new();
-        loop {
-            let (state, flips) = search_spaces.pop_front().unwrap();
-            if !seen.insert(state) {
-                continue;
-            }
-            for &switch in self.switches.iter() {
-                let new_state = switch ^ state;
-                if new_state == self.desired_light_state {
-                    return flips + 1;
-                } else {
-                    search_spaces.push_back((new_state, flips + 1));
-                }
-            }
-        }
-    }
+            switches.process_results(|it| {
+                it.powerset()
+                    .filter_map(|powset| {
+                        let flips = powset.len() as u64;
+                        let state = powset.into_iter().fold(0, |a, b| a ^ b);
+                        (state == desired_state).then_some(flips)
+                    })
+                    .next()
+                    .context("No combo worked")
+            })?
+        })
+        .sum()
 }
 
 fn part2(s: &str) -> Result<u64> {
