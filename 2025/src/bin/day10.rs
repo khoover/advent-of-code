@@ -51,42 +51,41 @@ fn part2(s: &str) -> Result<u64> {
         .trim()
         .lines()
         .map(|s| {
-            let switches = switches_re
-                .captures_iter(s)
-                .map(|capture| capture.name("inner").unwrap().as_str())
-                .map(|x| {
-                    x.split(',')
-                        .map(|idx| idx.parse::<usize>().unwrap())
-                        .collect::<Vec<_>>()
-                })
-                .collect::<Vec<_>>();
+            let mut joltage_targets_and_exprs = joltage_re
+                .captures(s)
+                .context("Expected joltages")?
+                .name("inner")
+                .context("Broken regex")?
+                .as_str()
+                .split(',')
+                .map(|x| x.parse::<u16>().map(|x| (x, Expression::default())))
+                .collect::<Result<Vec<_>, _>>()?;
             let mut problem = ProblemVariables::new();
-            let vars = problem.add_vector(variable().integer().min(0), switches.len());
-            let objective: Expression = vars.iter().sum();
+            let objective = switches_re
+                .captures_iter(s)
+                .map(|capture| {
+                    let var = problem.add(variable().integer().min(0));
+                    capture
+                        .name("inner")
+                        .context("Broken regex")?
+                        .as_str()
+                        .split(',')
+                        .map(|idx| idx.parse::<usize>())
+                        .try_for_each(|idx| {
+                            idx.map(|x| {
+                                joltage_targets_and_exprs[x].1 += var;
+                            })
+                        })?;
+                    Ok(var)
+                })
+                .sum::<Result<Expression>>()?;
             let solution = problem
                 .minimise(&objective)
                 .using(default_solver)
                 .with_all(
-                    joltage_re
-                        .captures(s)
-                        .unwrap()
-                        .name("inner")
-                        .unwrap()
-                        .as_str()
-                        .split(',')
-                        .map(|x| x.parse::<u16>().unwrap())
-                        .enumerate()
-                        .map(|(idx, x)| {
-                            switches
-                                .iter()
-                                .enumerate()
-                                .filter_map(|(switch_idx, v)| {
-                                    v.contains(&idx).then_some(switch_idx)
-                                })
-                                .map(|var_idx| &vars[var_idx])
-                                .sum::<Expression>()
-                                .eq(x)
-                        }),
+                    joltage_targets_and_exprs
+                        .into_iter()
+                        .map(|(target, expr)| expr.eq(target)),
                 )
                 .solve()?;
             Ok(solution.eval(objective))
