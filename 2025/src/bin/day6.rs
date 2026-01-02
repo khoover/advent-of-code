@@ -3,29 +3,22 @@ use std::ops::Range;
 use anyhow::Result;
 use aoc_2025::byte_grid::Grid;
 use aoc_2025::run_day;
-use itertools::Itertools;
 use memchr::memchr2_iter;
 
 fn part1(s: &str) -> Result<u64> {
     let grid = Grid::from_input_lines(s.lines())?;
     let op_types_and_ranges = get_op_types(&grid[grid.height() - 1]);
-    let mut acc = op_types_and_ranges
-        .iter()
-        .map(|(_, op_type)| match op_type {
-            OpType::Product => 1_u64,
-            OpType::Sum => 0_u64,
-        })
-        .collect_vec();
-    for row in (0..grid.height() - 1).map(|i| &grid[i]) {
-        for (acc, (range, op_type)) in acc.iter_mut().zip_eq(op_types_and_ranges.iter().cloned()) {
-            let num = parse_ascii_bytes(&row[range]);
+    Ok(op_types_and_ranges
+        .into_iter()
+        .map(|(col_range, op_type)| -> u64 {
+            let it = (0..grid.height() - 1)
+                .map(|i| parse_ascii_bytes(grid[i][col_range.clone()].iter()));
             match op_type {
-                OpType::Product => *acc *= num,
-                OpType::Sum => *acc += num,
+                OpType::Product => it.product(),
+                OpType::Sum => it.sum(),
             }
-        }
-    }
-    Ok(acc.into_iter().sum())
+        })
+        .sum())
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
