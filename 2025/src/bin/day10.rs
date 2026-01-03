@@ -30,16 +30,15 @@ fn part1(s: &str) -> Result<u64> {
                     .map_err(anyhow::Error::from)
             });
 
-            switches.process_results(|it| {
-                it.powerset()
-                    .filter_map(|powset| {
+            switches
+                .process_results(|it| {
+                    it.powerset().find_map(|powset| {
                         let flips = powset.len() as u64;
                         let state = powset.into_iter().fold(0, |a, b| a ^ b);
                         (state == desired_state).then_some(flips)
                     })
-                    .next()
-                    .context("No combo worked")
-            })?
+                })?
+                .context("No combo worked")
         })
         .sum()
 }
