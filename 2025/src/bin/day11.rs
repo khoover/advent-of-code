@@ -9,23 +9,27 @@ const END: NodeId = [b'o', b'u', b't'];
 
 fn part1(s: &str) -> Result<u64> {
     const START: NodeId = [b'y', b'o', b'u'];
-    let graph = parse_graph(s)?;
+    let graph = parse_graph(s);
     let mut paths_to_out: FnvHashMap<NodeId, u64> =
         FnvHashMap::with_capacity_and_hasher(graph.len(), Default::default());
     paths_to_out.insert(END, 1);
     Ok(recursive_path_search(&mut paths_to_out, &graph, START))
 }
 
-fn parse_graph(s: &str) -> Result<Graph> {
+fn parse_graph(s: &str) -> Graph {
     s.lines()
         .filter(|line| line.len() > 5)
         .map(|line| {
             let dsts = line.as_bytes()[5..]
                 .windows(3)
                 .step_by(4)
-                .map(|window| window.try_into().map_err(Into::into))
-                .collect::<Result<_>>()?;
-            Ok((line.as_bytes()[..3].try_into()?, dsts))
+                .map(|window| {
+                    window
+                        .try_into()
+                        .expect("Windows didn't give a length 3 slice")
+                })
+                .collect::<Vec<_>>();
+            (line.as_bytes()[..3].try_into().unwrap(), dsts)
         })
         .collect()
 }
@@ -53,7 +57,7 @@ fn part2(s: &str) -> Result<u64> {
     const SERVER: NodeId = [b's', b'v', b'r'];
     const DAC: NodeId = [b'd', b'a', b'c'];
     const FFT: NodeId = [b'f', b'f', b't'];
-    let graph = parse_graph(s)?;
+    let graph = parse_graph(s);
     let mut memo_cache: FnvHashMap<NodeId, u64> =
         FnvHashMap::with_capacity_and_hasher(graph.len(), Default::default());
 
