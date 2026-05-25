@@ -1,3 +1,4 @@
 **/input/**/*.txt
 !**/input/**/*.txt.gpg
 2025/target
+**/.zig-cache
