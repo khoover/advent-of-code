@@ -40,13 +40,12 @@ fn Md5DataType(comptime N: usize) type {
 
 const ProblemState = struct { iter: SharedIterator(u32), solution_1: std.atomic.Value(u32), solution_2: std.atomic.Value(u32) };
 
-fn worker(comptime N: usize, io: Io, state: *ProblemState, prefix: []const u8) Io.Cancelable!void {
+fn worker(comptime N: usize, state: *ProblemState, prefix: []const u8) void {
     var message_buffers: [N][64]u8 = undefined;
     @memcpy(message_buffers[0][0..prefix.len], prefix);
     @memset(message_buffers[0][prefix.len..64], 0);
     while (state.iter.next()) |base| {
         check_chunk(N, &message_buffers, prefix.len, base, state);
-        try io.checkCancel();
     }
 }
 
@@ -238,8 +237,8 @@ inline fn common(comptime N: usize, k: u32, s: u5, f: @Vector(N, u32), m: @Vecto
 
 pub fn main(init: std.process.Init) !void {
     const bound_worker = struct {
-        fn inner_worker(io: Io, problem_state: *ProblemState, problem_prefix: []const u8) Io.Cancelable!void {
-            try worker(16, io, problem_state, problem_prefix);
+        fn inner_worker(problem_state: *ProblemState, problem_prefix: []const u8) void {
+            worker(16, problem_state, problem_prefix);
         }
     }.inner_worker;
 
@@ -258,10 +257,9 @@ pub fn main(init: std.process.Init) !void {
     for (0..1000) |_| {
         std.mem.doNotOptimizeAway({
             var group = Io.Group.init;
-            errdefer group.cancel(init.io);
             state = ProblemState{ .iter = .init(1000, 1000), .solution_1 = .init(0xFFFFFFFF), .solution_2 = .init(0xFFFFFFFF) };
             for (0..core_count) |_| {
-                try group.concurrent(init.io, bound_worker, .{ init.io, &state, prefix });
+                group.concurrent(init.io, bound_worker, .{ &state, prefix }) catch unreachable;
             }
             // Setting state.iter.start to 0 instead of this loses 300us, likely from the poor worker who
             // pulls the 0 value getting branch mispredictions for life.
@@ -269,7 +267,7 @@ pub fn main(init: std.process.Init) !void {
             @memcpy(message_buffers[0][0..prefix.len], prefix);
             @memset(message_buffers[0][prefix.len..64], 0);
             check_chunk(16, &message_buffers, prefix.len, 0, &state);
-            try group.await(init.io);
+            group.await(init.io) catch unreachable;
         });
     }
     const awake_duration = awake_start.untilNow(init.io, .awake);
