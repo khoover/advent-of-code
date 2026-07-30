@@ -21,6 +21,8 @@ pub fn build(b: *std.Build) void {
     // target and optimize options) will be listed when running `zig build --help`
     // in this directory.
 
+    const zbench = b.dependency("zbench", .{ .target = target, .optimize = .ReleaseSafe }).module("zbench");
+
     // This creates a module, which represents a collection of source files alongside
     // some compilation options, such as optimization mode and linked system libraries.
     // Zig modules are the preferred way of making Zig code available to consumers.
@@ -115,6 +117,30 @@ pub fn build(b: *std.Build) void {
     if (b.args) |args| {
         run_cmd.addArgs(args);
     }
+
+    // Bencher
+    const bencher = b.addExecutable(.{
+        .name = "advent_of_bench",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/bench.zig"),
+            .target = target,
+            .optimize = .ReleaseFast,
+            .imports = &.{
+                .{ .name = "advent_of_code", .module = mod },
+                .{ .name = "zbench", .module = zbench },
+            },
+        }),
+    });
+    // Do we need to? No, but I feel better.
+    b.installArtifact(bencher);
+    const bench_cmd = b.addRunArtifact(bencher);
+    bench_cmd.step.dependOn(b.getInstallStep());
+    bench_cmd.setCwd(b.path(""));
+    if (b.args) |args| {
+        bench_cmd.addArgs(args);
+    }
+    const bench_step = b.step("bench", "Run benchmarking; optionally accepts a year or a year and day");
+    bench_step.dependOn(&bench_cmd.step);
 
     // Creates an executable that will run `test` blocks from the provided module.
     // Here `mod` needs to define a target, which is why earlier we made sure to
