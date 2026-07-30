@@ -1,0 +1,3 @@
+[submodule "zig/advent-of-code/libs/zbench"]
+	path = zig/advent-of-code/libs/zbench
+	url = https://github.com/hendriknielaender/zBench
