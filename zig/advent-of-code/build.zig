@@ -89,7 +89,7 @@ pub fn build(b: *std.Build) void {
     // install prefix when running `zig build` (i.e. when executing the default
     // step). By default the install prefix is `zig-out/` but can be overridden
     // by passing `--prefix` or `-p`.
-    b.installArtifact(runner);
+    const runner_install = b.addInstallArtifact(runner, .{});
 
     // This creates a top level step. Top level steps have a name and can be
     // invoked by name when running `zig build` (e.g. `zig build run`).
@@ -110,7 +110,7 @@ pub fn build(b: *std.Build) void {
 
     // By making the run step depend on the default step, it will be run from the
     // installation directory rather than directly from within the cache directory.
-    run_cmd.step.dependOn(b.getInstallStep());
+    run_cmd.step.dependOn(&runner_install.step);
 
     // This allows the user to pass arguments to the application in the build
     // command itself, like this: `zig build run -- arg1 arg2 etc`
@@ -132,15 +132,19 @@ pub fn build(b: *std.Build) void {
         }),
     });
     // Do we need to? No, but I feel better.
-    b.installArtifact(bencher);
+    const bencher_install = b.addInstallArtifact(bencher, .{});
     const bench_cmd = b.addRunArtifact(bencher);
-    bench_cmd.step.dependOn(b.getInstallStep());
+    bench_cmd.step.dependOn(&bencher_install.step);
     bench_cmd.setCwd(b.path(""));
     if (b.args) |args| {
         bench_cmd.addArgs(args);
     }
     const bench_step = b.step("bench", "Run benchmarking; optionally accepts a year or a year and day");
     bench_step.dependOn(&bench_cmd.step);
+
+    const install = b.getInstallStep();
+    install.dependOn(&bencher_install.step);
+    install.dependOn(&runner_install.step);
 
     // Creates an executable that will run `test` blocks from the provided module.
     // Here `mod` needs to define a target, which is why earlier we made sure to
