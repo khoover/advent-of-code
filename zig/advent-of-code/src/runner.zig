@@ -41,30 +41,42 @@ fn Md5DataType(comptime N: usize) type {
 const ProblemState = struct { iter: SharedIterator(u32), solution_1: std.atomic.Value(u32), solution_2: std.atomic.Value(u32) };
 
 fn worker(comptime N: usize, state: *ProblemState, prefix: []const u8) void {
-    var message_buffers: [N][64]u8 = undefined;
-    @memcpy(message_buffers[0][0..prefix.len], prefix);
-    @memset(message_buffers[0][prefix.len..64], 0);
+    std.debug.assert(prefix.len < 64);
+
+    var message_buffers: [16][N]u32 = undefined;
+    for (0..16) |i| {
+        var chunk: [4]u8 = .{ 0, 0, 0, 0 };
+        const rem = @min(4, prefix.len - 4 * i);
+        @memcpy(chunk[0..rem], prefix[4 * i ..][0..rem]);
+        const val = std.mem.readInt(u32, &chunk, .little);
+        message_buffers[i] = @splat(val);
+        if (rem != 4) {
+            @memset(message_buffers[i + 1 .. 16], @splat(0));
+            break;
+        }
+    }
+
     while (state.iter.next()) |base| {
         check_chunk(N, &message_buffers, prefix.len, base, state);
     }
 }
 
-fn check_chunk(comptime md5_chunk_size: usize, message_buffers: *[md5_chunk_size][64]u8, prefix_len: usize, base: u32, state: *ProblemState) void {
+fn check_chunk(comptime N: usize, message_buffers: *[16][N]u32, prefix_len: usize, base: u32, state: *ProblemState) void {
     std.debug.assert(base % 1000 == 0);
     std.debug.assert(prefix_len <= 32);
-    const leftovers = 1000 % md5_chunk_size;
+    const leftovers = 1000 % N;
 
-    const offset_start_idx = init_buffers(md5_chunk_size, message_buffers, prefix_len, base);
+    const offset_start_idx = init_buffers(N, message_buffers, prefix_len, base);
 
     var chunk_offset: u32 = 0;
-    const check_mask_1: @Vector(md5_chunk_size, u32) = @splat(0x00F0FFFF);
-    const check_mask_2: @Vector(md5_chunk_size, u32) = @splat(0x00FFFFFF);
-    const zeros: @Vector(md5_chunk_size, u32) = @splat(0);
-    while (chunk_offset + (md5_chunk_size - 1) < 1000) : (chunk_offset += md5_chunk_size) {
-        write_offsets(md5_chunk_size, message_buffers, offset_start_idx, chunk_offset);
-        const first_four_bytes = md5(md5_chunk_size, message_buffers).a;
-        const mask_comp_1: @Int(.unsigned, md5_chunk_size) = @bitCast(@intFromBool(check_mask_1 & first_four_bytes == zeros));
-        const mask_comp_2: @Int(.unsigned, md5_chunk_size) = @bitCast(@intFromBool(check_mask_2 & first_four_bytes == zeros));
+    const check_mask_1: @Vector(N, u32) = @splat(0x00F0FFFF);
+    const check_mask_2: @Vector(N, u32) = @splat(0x00FFFFFF);
+    const zeros: @Vector(N, u32) = @splat(0);
+    while (chunk_offset + (N - 1) < 1000) : (chunk_offset += N) {
+        write_offsets(N, message_buffers, offset_start_idx, chunk_offset);
+        const first_four_bytes = md5(N, message_buffers).a;
+        const mask_comp_1: @Int(.unsigned, N) = @bitCast(@intFromBool(check_mask_1 & first_four_bytes == zeros));
+        const mask_comp_2: @Int(.unsigned, N) = @bitCast(@intFromBool(check_mask_2 & first_four_bytes == zeros));
         if (mask_comp_1 != 0) {
             @branchHint(.unlikely);
             const i = @ctz(mask_comp_1);
@@ -78,11 +90,16 @@ fn check_chunk(comptime md5_chunk_size: usize, message_buffers: *[md5_chunk_size
             }
         }
     }
+
     if (comptime leftovers != 0) {
         comptime std.debug.assert(std.math.isPowerOfTwo(leftovers));
         chunk_offset = 1000 - leftovers;
-        write_offsets(leftovers, message_buffers[0..leftovers], offset_start_idx, chunk_offset);
-        const first_four_bytes = md5(leftovers, message_buffers[0..leftovers]).a;
+        var leftovers_buf: [16][leftovers]u32 = undefined;
+        for (0..16) |i| {
+            leftovers_buf[i] = @splat(message_buffers[i][0]);
+        }
+        write_offsets(leftovers, &leftovers_buf, offset_start_idx, chunk_offset);
+        const first_four_bytes = md5(leftovers, &leftovers_buf).a;
         const mask_comp_1: @Int(.unsigned, leftovers) = @bitCast(@intFromBool(first_four_bytes & @as(@Vector(leftovers, u32), @splat(0x00F0FFFF)) == @as(@Vector(leftovers, u32), @splat(0))));
         const mask_comp_2: @Int(.unsigned, leftovers) = @bitCast(@intFromBool(first_four_bytes & @as(@Vector(leftovers, u32), @splat(0x00FFFFFF)) == @as(@Vector(leftovers, u32), @splat(0))));
         if (mask_comp_1 != 0) {
@@ -100,20 +117,39 @@ fn check_chunk(comptime md5_chunk_size: usize, message_buffers: *[md5_chunk_size
     }
 }
 
-inline fn init_buffers(comptime N: usize, buffers: *[N][64]u8, prefix_len: usize, base: u32) usize {
-    const base_len = encode_base(buffers[0][prefix_len..], base);
-    const offset_start_idx = prefix_len + base_len - 3;
-    buffers[0][prefix_len + base_len] = 0x80;
-    @memset(buffers[0][prefix_len + base_len + 1 .. 56], 0);
-    std.mem.writeInt(u64, buffers[0][56..64], @as(u64, @intCast(prefix_len + base_len)) * 8, .little);
-    for (1..N) |i| {
-        @memcpy(&buffers[i], &buffers[0]);
+inline fn init_buffers(comptime N: usize, buffers: *[16][N]u32, prefix_len: usize, base: u32) usize {
+    const copy_start = prefix_len / 4;
+    const prefix_overlap = prefix_len % 4;
+
+    var base_buf: [14]u8 = undefined;
+    std.mem.writeInt(u32, base_buf[0..4], buffers[copy_start][0], .little);
+    const encoded_without_offset_len = encode_base(base_buf[prefix_overlap..], base);
+    const offset_start_idx = prefix_len + encoded_without_offset_len;
+    const base_len = prefix_overlap + encoded_without_offset_len + 4;
+    base_buf[base_len - 1] = 0x80;
+
+    var base_index: usize = 0;
+    var buf_index = copy_start;
+    while (base_index < base_len) : ({
+        buf_index += 1;
+        base_index += 4;
+    }) {
+        const to_copy = @min(4, base_len - base_index);
+        var word: [4]u8 = .{ 0, 0, 0, 0 };
+        @memcpy(word[0..to_copy], base_buf[base_index..][0..to_copy]);
+        buffers[buf_index] = @splat(std.mem.readInt(u32, &word, .little));
     }
+
+    @memset(buffers[buf_index..14], @splat(0));
+    var quad: [8]u8 = undefined;
+    std.mem.writeInt(u64, &quad, @as(u64, @intCast(offset_start_idx + 3)) * 8, .little);
+    buffers[14] = @splat(std.mem.readInt(u32, quad[0..4], .little));
+    buffers[15] = @splat(std.mem.readInt(u32, quad[4..8], .little));
     return offset_start_idx;
 }
 
 inline fn encode_base(buf: []u8, base: u32) usize {
-    var cur = base;
+    var cur = @divTrunc(base, 1000);
     var i = buf.len - 1;
     while (cur > 0) : ({
         cur = @divTrunc(cur, 10);
@@ -121,50 +157,53 @@ inline fn encode_base(buf: []u8, base: u32) usize {
     }) {
         buf[i] = @as(u8, @truncate(cur % 10)) + '0';
     }
-    const len = buf.len - i - 1;
-    if (len > 0) {
+    const total_written = buf[i + 1 ..].len;
+    if (total_written > 0) {
         @branchHint(.likely);
-        @memmove(buf[0..len], buf[i + 1 ..][0..len]);
+        @memmove(buf[0..total_written], buf[i + 1 .. buf.len]);
     }
-    // TODO: set the bytes from max(i+1, len) to 56 to 0, if any.
-    const overwrite_start = @max(i + 1, len);
-    const overwrite_end = buf.len - 8;
-    if (overwrite_start < overwrite_end) {
-        @branchHint(.unlikely);
-        @memset(buf[overwrite_start..overwrite_end], 0);
-    }
-    return len;
+    return total_written;
 }
 
-inline fn write_offsets(comptime N: usize, buf: *[N][64]u8, offset_start_idx: usize, chunk_offset: usize) void {
-    const offset: @Vector(N, u32) = @splat(@truncate(chunk_offset));
-    var indexes: @Vector(N, u32) = undefined;
+inline fn write_offsets(comptime N: usize, buf: *[16][N]u32, offset_start_idx: usize, chunk_offset: usize) void {
+    const Vec = @Vector(N, u32);
+    const Shift = @Vector(N, u5);
+
+    const first_offset_word_idx = offset_start_idx / 4;
+    const first_offset_byte_in_word_idx = offset_start_idx % 4;
+    const left_shift: u5 = @as(u5, @intCast(8 * first_offset_byte_in_word_idx));
+    const right_shift: u5 = @as(u5, @intCast(@min(31, 8 * (4 - first_offset_byte_in_word_idx))));
+    const first_mask: u32 = ~(@as(u32, 0xFFFFFF) << left_shift);
+    const second_mask: u32 = ~(@as(u32, 0xFFFFFF) >> right_shift);
+
+    const offset: Vec = @splat(@truncate(chunk_offset));
+    var indexes: Vec = undefined;
     inline for (0..N) |i| {
         indexes[i] = i;
     }
     indexes += offset;
-    const tens: @Vector(N, u32) = @splat(10);
-    const zero_digit: @Vector(N, u8) = @splat('0');
-    const ones_digit = @as(@Vector(N, u8), @truncate(indexes % tens)) + zero_digit;
-    const tens_digit = @as(@Vector(N, u8), @truncate(@divTrunc(indexes, tens) % tens)) + zero_digit;
-    const huns_digit = @as(@Vector(N, u8), @truncate(@divTrunc(indexes, tens * tens) % tens)) + zero_digit;
-    inline for (0..N) |i| {
-        buf[i][offset_start_idx + 2] = ones_digit[i];
-        buf[i][offset_start_idx + 1] = tens_digit[i];
-        buf[i][offset_start_idx] = huns_digit[i];
-    }
+    const tens: Vec = @splat(10);
+    const zero_digit: Vec = @splat(0x303030);
+
+    const ones_digit = indexes % tens;
+    const tens_digit = @divTrunc(indexes, tens) % tens;
+    const huns_digit = @divTrunc(indexes, tens * tens) % tens;
+    const assembled = ((ones_digit << @splat(16)) | (tens_digit << @splat(8)) | huns_digit) + zero_digit;
+    const first_word_base: Vec = buf[first_offset_word_idx];
+    const second_word_base: Vec = buf[first_offset_word_idx + 1];
+    const first_word: Vec = (first_word_base & @as(Vec, @splat(first_mask))) | (assembled << @as(Shift, @splat(left_shift)));
+    const second_word: Vec = (second_word_base & @as(Vec, @splat(second_mask))) | (assembled >> @as(Shift, @splat(right_shift)));
+    buf[first_offset_word_idx] = first_word;
+    buf[first_offset_word_idx + 1] = second_word;
 }
 
-fn md5(comptime N: usize, m: *const [N][64]u8) Md5DataType(N) {
+fn md5(comptime N: usize, m: *const [16][N]u32) Md5DataType(N) {
     @setEvalBranchQuota(10000);
     const base_data = Md5DataType(N){ .a = @splat(0x67452301), .b = @splat(0xefcdab89), .c = @splat(0x98badcfe), .d = @splat(0x10325476) };
     var data = base_data;
-
     var message_vecs: [16]@Vector(N, u32) = undefined;
-    inline for (0..16) |i| {
-        inline for (0..N) |j| {
-            message_vecs[i][j] = std.mem.readInt(u32, m[j][4 * i ..][0..4], .little);
-        }
+    for (0..16) |i| {
+        message_vecs[i] = m[i];
     }
 
     data = round1(N, &message_vecs, data);
@@ -236,9 +275,10 @@ inline fn common(comptime N: usize, k: u32, s: u5, f: @Vector(N, u32), m: @Vecto
 }
 
 pub fn main(init: std.process.Init) !void {
+    const N: usize = 16;
     const bound_worker = struct {
         fn inner_worker(problem_state: *ProblemState, problem_prefix: []const u8) void {
-            worker(16, problem_state, problem_prefix);
+            worker(N, problem_state, problem_prefix);
         }
     }.inner_worker;
 
@@ -263,10 +303,19 @@ pub fn main(init: std.process.Init) !void {
             }
             // Setting state.iter.start to 0 instead of this loses 300us, likely from the poor worker who
             // pulls the 0 value getting branch mispredictions for life.
-            var message_buffers: [16][64]u8 = undefined;
-            @memcpy(message_buffers[0][0..prefix.len], prefix);
-            @memset(message_buffers[0][prefix.len..64], 0);
-            check_chunk(16, &message_buffers, prefix.len, 0, &state);
+            var message_buffers: [16][N]u32 = undefined;
+            for (0..16) |i| {
+                var chunk: [4]u8 = .{ 0, 0, 0, 0 };
+                const rem = @min(4, prefix.len - 4 * i);
+                @memcpy(chunk[0..rem], prefix[4 * i ..][0..rem]);
+                const val = std.mem.readInt(u32, &chunk, .little);
+                message_buffers[i] = @splat(val);
+                if (rem != 4) {
+                    @memset(message_buffers[i + 1 .. 16], @splat(0));
+                    break;
+                }
+            }
+            check_chunk(N, &message_buffers, prefix.len, 0, &state);
             group.await(init.io) catch unreachable;
         });
     }
