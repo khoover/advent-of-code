@@ -77,11 +77,21 @@ fn check_chunk(comptime N: usize, message_buffers: *[16][N]u32, prefix_len: usiz
         const mask_comp_1 = std.simd.firstIndexOfValue(check_mask_1 & first_four_bytes, 0);
         if (mask_comp_1) |i| {
             @branchHint(.unlikely);
-            _ = state.solution_1.fetchMin(@as(u32, @truncate(i)) + chunk_offset + base, .acq_rel);
+            _ = state.solution_1.cmpxchgStrong(
+                0xFFFFFFFF,
+                @as(u32, @truncate(i)) + chunk_offset + base,
+                .monotonic,
+                .monotonic,
+            );
             const mask_comp_2 = std.simd.firstIndexOfValue(check_mask_2 & first_four_bytes, 0);
             if (mask_comp_2) |j| {
                 @branchHint(.unlikely);
-                _ = state.solution_2.fetchMin(@as(u32, @truncate(j)) + chunk_offset + base, .acq_rel);
+                _ = state.solution_2.cmpxchgStrong(
+                    0xFFFFFFFF,
+                    @as(u32, @truncate(j)) + chunk_offset + base,
+                    .monotonic,
+                    .monotonic,
+                );
                 _ = state.iter.finish();
                 return;
             }
@@ -100,11 +110,21 @@ fn check_chunk(comptime N: usize, message_buffers: *[16][N]u32, prefix_len: usiz
         const mask_comp_1 = std.simd.firstIndexOfValue(first_four_bytes & @as(@Vector(leftovers, u32), @splat(0x00F0FFFF)), 0);
         if (mask_comp_1) |i| {
             @branchHint(.unlikely);
-            _ = state.solution_1.fetchMin(@as(u32, @truncate(i)) + chunk_offset + base, .acq_rel);
+            _ = state.solution_1.cmpxchgStrong(
+                0xFFFFFFFF,
+                @as(u32, @truncate(i)) + chunk_offset + base,
+                .monotonic,
+                .monotonic,
+            );
             const mask_comp_2 = std.simd.firstIndexOfValue(first_four_bytes & @as(@Vector(leftovers, u32), @splat(0x00FFFFFF)), 0);
             if (mask_comp_2) |j| {
                 @branchHint(.unlikely);
-                _ = state.solution_2.fetchMin(@as(u32, @truncate(j)) + chunk_offset + base, .acq_rel);
+                _ = state.solution_2.cmpxchgStrong(
+                    0xFFFFFFFF,
+                    @as(u32, @truncate(j)) + chunk_offset + base,
+                    .monotonic,
+                    .monotonic,
+                );
                 _ = state.iter.finish();
                 return;
             }
