@@ -4,7 +4,7 @@ set -euo pipefail
 
 cd "$(dirname $0)/inputs"
 
-if [[ "$1" = "-i" ]]; then
+if [[ "${1:-}" = "-i" ]]; then
     identity_path="$2"
     shift 2
 else
