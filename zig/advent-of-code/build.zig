@@ -60,7 +60,7 @@ pub fn build(b: *std.Build) void {
     // If neither case applies to you, feel free to delete the declaration you
     // don't need and to put everything under a single module.
     const runner = b.addExecutable(.{
-        .name = "advent_of_code",
+        .name = "run",
         .root_module = b.createModule(.{
             // b.createModule defines a new module just like b.addModule but,
             // unlike b.addModule, it does not expose the module to consumers of
@@ -89,7 +89,10 @@ pub fn build(b: *std.Build) void {
     // install prefix when running `zig build` (i.e. when executing the default
     // step). By default the install prefix is `zig-out/` but can be overridden
     // by passing `--prefix` or `-p`.
-    const runner_install = b.addInstallArtifact(runner, .{});
+    const install_subpath = b.fmt("bin/{s}", .{@tagName(optimize)});
+    const runner_install = b.addInstallArtifact(runner, .{
+        .dest_dir = .{ .override = .{ .custom = install_subpath } },
+    });
 
     // This creates a top level step. Top level steps have a name and can be
     // invoked by name when running `zig build` (e.g. `zig build run`).
@@ -120,7 +123,7 @@ pub fn build(b: *std.Build) void {
 
     // Bencher
     const bencher = b.addExecutable(.{
-        .name = "advent_of_bench",
+        .name = "bench",
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/bench.zig"),
             .target = target,
@@ -132,7 +135,9 @@ pub fn build(b: *std.Build) void {
         }),
     });
     // Do we need to? No, but I feel better.
-    const bencher_install = b.addInstallArtifact(bencher, .{});
+    const bencher_install = b.addInstallArtifact(bencher, .{
+        .dest_dir = .{ .override = .{ .custom = install_subpath } },
+    });
     const bench_cmd = b.addRunArtifact(bencher);
     bench_cmd.step.dependOn(&bencher_install.step);
     bench_cmd.setCwd(b.path(""));
