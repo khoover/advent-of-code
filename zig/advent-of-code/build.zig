@@ -121,34 +121,7 @@ pub fn build(b: *std.Build) void {
         run_cmd.addArgs(args);
     }
 
-    // Bencher
-    const bencher = b.addExecutable(.{
-        .name = "bench",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/bench.zig"),
-            .target = target,
-            .optimize = .ReleaseFast,
-            .imports = &.{
-                .{ .name = "advent_of_code", .module = mod },
-                .{ .name = "zbench", .module = zbench },
-            },
-        }),
-    });
-    // Do we need to? No, but I feel better.
-    const bencher_install = b.addInstallArtifact(bencher, .{
-        .dest_dir = .{ .override = .{ .custom = install_subpath } },
-    });
-    const bench_cmd = b.addRunArtifact(bencher);
-    bench_cmd.step.dependOn(&bencher_install.step);
-    bench_cmd.setCwd(b.path(""));
-    if (b.args) |args| {
-        bench_cmd.addArgs(args);
-    }
-    const bench_step = b.step("bench", "Run benchmarking; optionally accepts a year or a year and day");
-    bench_step.dependOn(&bench_cmd.step);
-
     const install = b.getInstallStep();
-    install.dependOn(&bencher_install.step);
     install.dependOn(&runner_install.step);
 
     // Creates an executable that will run `test` blocks from the provided module.
