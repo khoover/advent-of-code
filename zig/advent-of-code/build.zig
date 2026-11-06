@@ -41,6 +41,9 @@ pub fn build(b: *std.Build) void {
         // Later on we'll use this module as the root module of a test executable
         // which requires us to specify a target.
         .target = target,
+        .imports = &.{
+            .{ .name = "zbench", .module = zbench },
+        },
     });
 
     // Here we define an executable. An executable needs to have a root module
@@ -85,6 +88,16 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
+    const decrypt_inputs = b.addSystemCommand(&.{"./decrypt_all.zsh"});
+    decrypt_inputs.setCwd(b.path("."));
+    const inputs_copy = b.addInstallDirectory(.{
+        .source_dir = b.path("inputs"),
+        .install_dir = .prefix,
+        .install_subdir = "inputs",
+        .include_extensions = &.{"input"},
+    });
+    inputs_copy.step.dependOn(&decrypt_inputs.step);
+
     // This declares intent for the executable to be installed into the
     // install prefix when running `zig build` (i.e. when executing the default
     // step). By default the install prefix is `zig-out/` but can be overridden
@@ -93,6 +106,7 @@ pub fn build(b: *std.Build) void {
     const runner_install = b.addInstallArtifact(runner, .{
         .dest_dir = .{ .override = .{ .custom = install_subpath } },
     });
+    runner_install.step.dependOn(&inputs_copy.step);
 
     // This creates a top level step. Top level steps have a name and can be
     // invoked by name when running `zig build` (e.g. `zig build run`).

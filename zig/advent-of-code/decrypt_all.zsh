@@ -1,0 +1,1 @@
+../../decrypt_all.zsh
