@@ -21,7 +21,7 @@ pub fn build(b: *std.Build) void {
     // target and optimize options) will be listed when running `zig build --help`
     // in this directory.
 
-    const zbench = b.dependency("zbench", .{ .target = target, .optimize = .ReleaseSafe }).module("zbench");
+    const cli = b.dependency("cli", .{ .target = target, .optimize = optimize }).module("cli");
 
     // This creates a module, which represents a collection of source files alongside
     // some compilation options, such as optimization mode and linked system libraries.
@@ -41,9 +41,6 @@ pub fn build(b: *std.Build) void {
         // Later on we'll use this module as the root module of a test executable
         // which requires us to specify a target.
         .target = target,
-        .imports = &.{
-            .{ .name = "zbench", .module = zbench },
-        },
     });
 
     // Here we define an executable. An executable needs to have a root module
@@ -84,6 +81,7 @@ pub fn build(b: *std.Build) void {
                 // can be extremely useful in case of collisions (which can happen
                 // importing modules from different packages).
                 .{ .name = "advent_of_code", .module = mod },
+                .{ .name = "cli", .module = cli },
             },
         }),
     });

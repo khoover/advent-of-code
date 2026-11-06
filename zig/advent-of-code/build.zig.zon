@@ -61,8 +61,9 @@
         //    // actually used.
         //    .lazy = false,
         //},
-        .zbench = .{
-            .path = "libs/zbench",
+        .cli = .{
+            .url = "git+https://github.com/sam701/zig-cli?ref=zig-0.17#40736aff15cb86b8a1f2e9c9a0c848de8d907ea2",
+            .hash = "cli-0.12.0-2eKe__kOAQC6VETttxaViKBGYMCGU3qGilpD78MenETi",
         },
     },
     // Specifies the set of files and directories that are included in this package.
