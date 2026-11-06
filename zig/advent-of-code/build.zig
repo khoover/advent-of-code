@@ -104,7 +104,6 @@ pub fn build(b: *std.Build) void {
     const runner_install = b.addInstallArtifact(runner, .{
         .dest_dir = .{ .override = .{ .custom = install_subpath } },
     });
-    runner_install.step.dependOn(&inputs_copy.step);
 
     // This creates a top level step. Top level steps have a name and can be
     // invoked by name when running `zig build` (e.g. `zig build run`).
@@ -121,6 +120,7 @@ pub fn build(b: *std.Build) void {
     // the user runs `zig build run`, so we create a dependency link.
     const run_cmd = b.addRunArtifact(runner);
     run_cmd.setCwd(b.path(""));
+    run_cmd.step.dependOn(&inputs_copy.step);
     run_step.dependOn(&run_cmd.step);
 
     // By making the run step depend on the default step, it will be run from the
