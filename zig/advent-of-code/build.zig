@@ -88,22 +88,13 @@ pub fn build(b: *std.Build) void {
 
     const decrypt_inputs = b.addSystemCommand(&.{"./decrypt_all.zsh"});
     decrypt_inputs.setCwd(b.path("."));
-    const inputs_copy = b.addInstallDirectory(.{
-        .source_dir = b.path("inputs"),
-        .install_dir = .prefix,
-        .install_subdir = "inputs",
-        .include_extensions = &.{"input"},
-    });
-    inputs_copy.step.dependOn(&decrypt_inputs.step);
 
     // This declares intent for the executable to be installed into the
     // install prefix when running `zig build` (i.e. when executing the default
     // step). By default the install prefix is `zig-out/` but can be overridden
     // by passing `--prefix` or `-p`.
-    const install_subpath = b.fmt("bin/{s}", .{@tagName(optimize)});
-    const runner_install = b.addInstallArtifact(runner, .{
-        .dest_dir = .{ .override = .{ .custom = install_subpath } },
-    });
+    const install_name = b.fmt("aoc-{s}", .{@tagName(optimize)});
+    const runner_install = b.addInstallArtifact(runner, .{ .dest_sub_path = install_name });
 
     // This creates a top level step. Top level steps have a name and can be
     // invoked by name when running `zig build` (e.g. `zig build run`).
@@ -119,8 +110,8 @@ pub fn build(b: *std.Build) void {
     // how this Run step will be executed. In our case we want to run it when
     // the user runs `zig build run`, so we create a dependency link.
     const run_cmd = b.addRunArtifact(runner);
-    run_cmd.setCwd(b.path(""));
-    run_cmd.step.dependOn(&inputs_copy.step);
+    run_cmd.step.dependOn(&decrypt_inputs.step);
+    run_cmd.addFileArg(b.path("inputs"));
     run_step.dependOn(&run_cmd.step);
 
     // By making the run step depend on the default step, it will be run from the
