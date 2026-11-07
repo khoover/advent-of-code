@@ -21,7 +21,7 @@ pub fn build(b: *std.Build) void {
     // target and optimize options) will be listed when running `zig build --help`
     // in this directory.
 
-    const cli = b.dependency("cli", .{ .target = target, .optimize = optimize }).module("cli");
+    const cli = b.dependency("cli", .{ .target = target, .optimize = .ReleaseSafe }).module("cli");
 
     // This creates a module, which represents a collection of source files alongside
     // some compilation options, such as optimization mode and linked system libraries.
