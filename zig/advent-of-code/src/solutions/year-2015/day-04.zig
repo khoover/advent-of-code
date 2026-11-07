@@ -72,22 +72,22 @@ fn worker(comptime N: usize, state: *ProblemState, prefix: []const u8) void {
     }
 
     while (state.iter.next()) |base| {
-        check_chunk(N, &message_buffers, prefix.len, base, state);
+        checkChunk(N, &message_buffers, prefix.len, base, state);
     }
 }
 
-fn check_chunk(comptime N: usize, message_buffers: *[16][N]u32, prefix_len: usize, base: u32, state: *ProblemState) void {
+fn checkChunk(comptime N: usize, message_buffers: *[16][N]u32, prefix_len: usize, base: u32, state: *ProblemState) void {
     std.debug.assert(base % 1000 == 0);
     std.debug.assert(prefix_len <= 8);
     const leftovers = 1000 % N;
 
-    const offset_start_idx = init_buffers(N, message_buffers, prefix_len, base);
+    const offset_start_idx = initBuffers(N, message_buffers, prefix_len, base);
 
     var chunk_offset: u32 = 0;
     const check_mask_1: @Vector(N, u32) = @splat(0x00F0FFFF);
     const check_mask_2: @Vector(N, u32) = @splat(0x00FFFFFF);
     while (chunk_offset + (N - 1) < 1000) : (chunk_offset += N) {
-        write_offsets(N, message_buffers, offset_start_idx, chunk_offset);
+        writeOffsets(N, message_buffers, offset_start_idx, chunk_offset);
         const first_four_bytes = md5(N, message_buffers).a;
         const mask_comp_1 = std.simd.firstIndexOfValue(check_mask_1 & first_four_bytes, 0);
         if (mask_comp_1) |i| {
@@ -120,7 +120,7 @@ fn check_chunk(comptime N: usize, message_buffers: *[16][N]u32, prefix_len: usiz
         for (0..16) |i| {
             leftovers_buf[i] = @splat(message_buffers[i][0]);
         }
-        write_offsets(leftovers, &leftovers_buf, offset_start_idx, chunk_offset);
+        writeOffsets(leftovers, &leftovers_buf, offset_start_idx, chunk_offset);
         const first_four_bytes = md5(leftovers, &leftovers_buf).a;
         const mask_comp_1 = std.simd.firstIndexOfValue(first_four_bytes & @as(@Vector(leftovers, u32), @splat(0x00F0FFFF)), 0);
         if (mask_comp_1) |i| {
@@ -147,7 +147,7 @@ fn check_chunk(comptime N: usize, message_buffers: *[16][N]u32, prefix_len: usiz
     }
 }
 
-inline fn init_buffers(comptime N: usize, buffers: *[16][N]u32, prefix_len: usize, base: u32) usize {
+inline fn initBuffers(comptime N: usize, buffers: *[16][N]u32, prefix_len: usize, base: u32) usize {
     std.debug.assert(prefix_len <= 8);
     std.debug.assert(base % 1000 == 0);
 
@@ -156,7 +156,7 @@ inline fn init_buffers(comptime N: usize, buffers: *[16][N]u32, prefix_len: usiz
 
     var base_buf: [14]u8 = undefined;
     std.mem.writeInt(u32, base_buf[0..4], buffers[copy_start][0], .little);
-    const encoded_without_offset_len = encode_base(base_buf[prefix_overlap..], base);
+    const encoded_without_offset_len = encodeBase(base_buf[prefix_overlap..], base);
     const offset_start_idx = prefix_len + encoded_without_offset_len;
     const base_len = prefix_overlap + encoded_without_offset_len + 4;
     base_buf[base_len - 1] = 0x80;
@@ -181,7 +181,7 @@ inline fn init_buffers(comptime N: usize, buffers: *[16][N]u32, prefix_len: usiz
     return offset_start_idx;
 }
 
-inline fn encode_base(buf: []u8, base: u32) usize {
+inline fn encodeBase(buf: []u8, base: u32) usize {
     std.debug.assert(base % 1000 == 0);
 
     var cur = @divTrunc(base, 1000);
@@ -201,7 +201,7 @@ inline fn encode_base(buf: []u8, base: u32) usize {
     return total_written;
 }
 
-inline fn write_offsets(comptime N: usize, buf: *[16][N]u32, offset_start_idx: usize, chunk_offset: usize) void {
+inline fn writeOffsets(comptime N: usize, buf: *[16][N]u32, offset_start_idx: usize, chunk_offset: usize) void {
     std.debug.assert(offset_start_idx < 56);
 
     const Vec = @Vector(N, u32);
@@ -312,7 +312,10 @@ inline fn common(comptime N: usize, k: u32, s: u5, f: @Vector(N, u32), m: @Vecto
 
 fn parse(input: []const u8, alloc: Allocator, io: Io) !ProblemState {
     _ = alloc;
-    const N: usize = 16;
+    return parseInner(16, input, io);
+}
+
+fn parseInner(comptime N: usize, input: []const u8, io: Io) !ProblemState {
     const bound_worker = struct {
         fn inner_worker(problem_state: *ProblemState, problem_prefix: []const u8) void {
             worker(N, problem_state, problem_prefix);
@@ -350,7 +353,7 @@ fn parse(input: []const u8, alloc: Allocator, io: Io) !ProblemState {
             break;
         }
     }
-    check_chunk(N, &message_buffers, prefix.len, 0, &state);
+    checkChunk(N, &message_buffers, prefix.len, 0, &state);
 
     try group.await(io);
     std.debug.assert(state.solution_1.load(.monotonic) != INITIAL_SOLUTION_VALUE);
