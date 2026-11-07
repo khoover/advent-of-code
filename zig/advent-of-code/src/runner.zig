@@ -3,8 +3,8 @@ const cli = @import("cli");
 
 var args = struct {
     input_path: []const u8 = undefined,
-    year: ?u32 = null,
-    day: ?u32 = null,
+    year: ?u16 = null,
+    day: ?u8 = null,
 }{};
 
 pub fn main(init: std.process.Init) !void {
