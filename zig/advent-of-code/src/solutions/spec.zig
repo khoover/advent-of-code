@@ -3,6 +3,8 @@ const std = @import("std");
 const Io = std.Io;
 const Allocator = std.mem.Allocator;
 
+const git_sha = @import("build_config").git_sha;
+
 pub const PartResult = struct {
     solution: []const u8,
     wall: Io.Duration,
@@ -65,4 +67,63 @@ pub fn makeRun(
             return result;
         }
     }.run;
+}
+
+const AOC_URL = "https://adventofcode.com/{d}/day/{d}";
+const USER_AGENT = std.fmt.comptimePrint("https://github.com/khoover/advent-of-code/tree/main/zig/advent-of-code@{s}", .{git_sha});
+
+pub const FetchError = error{
+    ClientError,
+    ServerError,
+};
+
+pub fn fetchInput(
+    year: u16,
+    day: u8,
+    input_dir: Io.Dir,
+    token: []const u8,
+    overwrite: bool,
+    io: Io,
+    alloc: Allocator,
+) !void {
+    const sub_path = try std.fmt.allocPrint(alloc, "{d}/{d:0>2}.input", .{ year, day });
+    defer alloc.free(sub_path);
+    const file = try input_dir.createFile(
+        io,
+        sub_path,
+        .{ .truncate = overwrite, .exclusive = !overwrite },
+    );
+    defer file.close(io);
+    var buf: [1024]u8 = undefined;
+    const writer = file.writer(io, &buf);
+    defer writer.end();
+
+    const client = std.http.Client{ .allocator = alloc, .io = io };
+    defer client.deinit();
+
+    const query_url = try std.fmt.allocPrint(alloc, AOC_URL ++ "/input", .{ year, day });
+    defer alloc.free(query_url);
+    const cookie_header = try std.fmt.allocPrint(alloc, "session={s}", .{token});
+
+    const result = try client.fetch(.{
+        .redirect_behavior = .not_allowed,
+        .response_writer = &writer.interface,
+        .method = .GET,
+        .location = .{ .url = query_url },
+        .headers = .{ .user_agent = .{ .override = USER_AGENT } },
+        .privileged_headers = &.{
+            .{ .name = "Cookie", .value = cookie_header },
+        },
+    });
+    switch (result.status.class()) {
+        .client_error => {
+            return FetchError.ClientError;
+        },
+        .server_error => {
+            return FetchError.ServerError;
+        },
+        else => {
+            return;
+        },
+    }
 }
