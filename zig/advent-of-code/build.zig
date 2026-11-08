@@ -60,7 +60,7 @@ pub fn build(b: *std.Build) void {
     // If neither case applies to you, feel free to delete the declaration you
     // don't need and to put everything under a single module.
     const runner = b.addExecutable(.{
-        .name = "run",
+        .name = "aoc-run",
         .root_module = b.createModule(.{
             // b.createModule defines a new module just like b.addModule but,
             // unlike b.addModule, it does not expose the module to consumers of
@@ -93,7 +93,7 @@ pub fn build(b: *std.Build) void {
     // install prefix when running `zig build` (i.e. when executing the default
     // step). By default the install prefix is `zig-out/` but can be overridden
     // by passing `--prefix` or `-p`.
-    const install_name = b.fmt("aoc-{s}", .{@tagName(optimize)});
+    const install_name = b.fmt("aoc-run-{s}", .{@tagName(optimize)});
     const runner_install = b.addInstallArtifact(runner, .{ .dest_sub_path = install_name });
 
     // This creates a top level step. Top level steps have a name and can be
