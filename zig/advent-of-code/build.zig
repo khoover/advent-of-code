@@ -86,6 +86,10 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
+    const options = b.addOptions();
+    options.addOption([]const u8, "git_sha", getGitSha(b));
+    runner.root_module.addOptions("build_config", options);
+
     const decrypt_inputs = b.addSystemCommand(&.{"./decrypt_all.zsh"});
     decrypt_inputs.setCwd(b.path("."));
 
@@ -165,4 +169,9 @@ pub fn build(b: *std.Build) void {
     //
     // Lastly, the Zig build system is relatively simple and self-contained,
     // and reading its source code will allow you to master it.
+}
+
+fn getGitSha(b: *std.Build) []const u8 {
+    const raw_sha = b.run(&.{ "git", "rev-parse", "--short", "HEAD" });
+    return std.mem.trim(u8, raw_sha, &std.ascii.whitespace);
 }
