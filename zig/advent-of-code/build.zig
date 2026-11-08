@@ -80,7 +80,7 @@ pub fn build(b: *std.Build) void {
                 // repeated because you are allowed to rename your imports, which
                 // can be extremely useful in case of collisions (which can happen
                 // importing modules from different packages).
-                .{ .name = "advent_of_code", .module = mod },
+                .{ .name = "common", .module = mod },
                 .{ .name = "cli", .module = cli },
             },
         }),
