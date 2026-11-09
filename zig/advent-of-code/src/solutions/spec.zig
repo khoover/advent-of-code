@@ -9,26 +9,36 @@ pub const PartResult = struct {
     cpu: Io.Duration,
 };
 
+pub const Day = u5;
+pub const Year = u12;
+
 pub const Result = struct {
     parse_wall: Io.Duration,
     parse_cpu: Io.Duration,
     part1: PartResult,
     part2: ?PartResult,
+
+    pub fn deinit(self: *Result, alloc: Allocator) void {
+        alloc.free(self.part1.solution);
+        if (self.part2) |part2| {
+            alloc.free(part2.solution);
+        }
+    }
 };
 
-const RunFn = fn ([]const u8, Allocator, Io) anyerror!Result;
+pub const DayRunFn = fn ([]const u8, Allocator, Io) anyerror!Result;
 
 /// Create a standardized run function that evaluates a given day in Advent of Code.
 /// Accepts the input data, an allocator, and an Io instance.
 /// Part1/2 functions expected to allocate the space for their result strings from the
 /// passed-in allocator (i.e. no returning static values).
-pub fn makeRun(
+pub fn makeDayRun(
     comptime T: type,
     comptime parse: fn ([]const u8, Allocator, Io) anyerror!T,
     comptime part1: fn (*const T, Allocator, Io) anyerror![]const u8,
     comptime part2: ?fn (*const T, Allocator, Io) anyerror![]const u8,
     comptime deinit: ?fn (*T, Allocator, Io) void,
-) RunFn {
+) DayRunFn {
     return struct {
         fn run(input_bytes: []const u8, alloc: Allocator, io: Io) anyerror!Result {
             var result: Result = undefined;

@@ -3,11 +3,12 @@ const Io = std.Io;
 
 const cli = @import("cli");
 const Client = @import("Client.zig");
+const spec = @import("solutions/spec.zig");
 
 var args = struct {
     input_path: []const u8 = undefined,
-    year: ?u16 = null,
-    day: ?u8 = null,
+    year: ?spec.Year = null,
+    day: ?spec.Day = null,
     fetch: bool = false,
     token: ?[]const u8 = null,
     io: Io = undefined,
@@ -74,7 +75,7 @@ fn run() !void {
         args.input_path,
         .{ .iterate = true, .access_sub_paths = false },
     );
-    defer Io.Dir.close(input_dir, args.io);
+    defer input_dir.close(args.io);
     var walker = try input_dir.walkSelectively(args.gpa);
     defer walker.deinit();
 
