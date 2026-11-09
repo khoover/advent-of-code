@@ -362,12 +362,12 @@ fn parseInner(comptime N: usize, input: []const u8, io: Io) !ProblemState {
     return state;
 }
 
-fn part1(state: ProblemState, alloc: Allocator, io: Io) ![]const u8 {
+fn part1(state: *const ProblemState, alloc: Allocator, io: Io) ![]const u8 {
     _ = io;
     return std.fmt.allocPrint(alloc, "{d}", .{state.solution_1.load(.monotonic)});
 }
 
-fn part2(state: ProblemState, alloc: Allocator, io: Io) ![]const u8 {
+fn part2(state: *const ProblemState, alloc: Allocator, io: Io) ![]const u8 {
     _ = io;
     return std.fmt.allocPrint(alloc, "{d}", .{state.solution_2.load(.monotonic)});
 }

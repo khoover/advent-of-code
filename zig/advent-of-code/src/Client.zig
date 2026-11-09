@@ -13,7 +13,9 @@ client: std.http.Client,
 io: Io,
 last_request_at: std.atomic.Value(i64) = .init(0),
 
-const AOC_URL = "https://adventofcode.com/{d}/day/{d}";
+const AOC_URL_BASE = "https://adventofcode.com/YYYY/day/DD/SUFFIX";
+const YEAR_OFFSET = std.mem.indexOf(u8, AOC_URL_BASE, "YYYY") orelse @compileError("Broken URL base; no year segment");
+const DAY_OFFSET = std.mem.indexOf(u8, AOC_URL_BASE, "DD") orelse @compileError("Broken URL base; no day segment");
 const USER_AGENT = std.fmt.comptimePrint("github.com/khoover/advent-of-code/tree/main/zig/advent-of-code@{s}", .{git_sha});
 
 pub const FetchError = error{
@@ -71,10 +73,22 @@ pub fn fetchInput(
     year: spec.Year,
     day: spec.Day,
     writer: *Io.Writer,
-    alloc: Allocator,
 ) !void {
-    const query_url = try std.fmt.allocPrint(alloc, AOC_URL ++ "/input", .{ year, day });
-    defer alloc.free(query_url);
+    var query_url_buf: [AOC_URL_BASE.len]u8 = AOC_URL_BASE.*;
+    const query_url: []const u8 = url: {
+        @memcpy(query_url_buf[YEAR_OFFSET..][0..4], &year);
+        var suffix_offset: usize = undefined;
+        if (day[0] == '0') {
+            query_url_buf[DAY_OFFSET] = day[1];
+            suffix_offset = DAY_OFFSET + 1;
+        } else {
+            query_url_buf[DAY_OFFSET] = day[0];
+            query_url_buf[DAY_OFFSET + 1] = day[1];
+            suffix_offset = DAY_OFFSET + 2;
+        }
+        @memcpy(query_url_buf[suffix_offset..][0..6], "/input");
+        break :url query_url_buf[0 .. suffix_offset + 6];
+    };
 
     try client.waitForCooldown();
 

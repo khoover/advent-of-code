@@ -10,10 +10,18 @@ pub const PartResult = struct {
     solution: []const u8,
     wall: Io.Duration,
     cpu: Io.Duration,
+
+    pub fn dupe(self: *const PartResult, a: Allocator) !PartResult {
+        return .{
+            .wall = self.wall,
+            .cpu = self.cpu,
+            .solution = try a.dupe(u8, self.solution),
+        };
+    }
 };
 
-pub const Day = u5;
-pub const Year = u12;
+pub const Day = [2]u8;
+pub const Year = [4]u8;
 
 pub const Result = struct {
     parse_wall: Io.Duration,
@@ -21,10 +29,33 @@ pub const Result = struct {
     part1: PartResult,
     part2: ?PartResult,
 
-    pub fn deinit(self: *Result, alloc: Allocator) void {
+    pub fn deinit(self: *const Result, alloc: Allocator) void {
         alloc.free(self.part1.solution);
         if (self.part2) |part2| {
             alloc.free(part2.solution);
+        }
+    }
+
+    pub fn dupe(self: *const Result, a: Allocator) !Result {
+        const part1 = try self.part1.dupe(a);
+        errdefer a.free(part1.solution);
+        return .{
+            .parse_wall = self.parse_wall,
+            .parse_cpu = self.parse_cpu,
+            .part1 = part1,
+            .part2 = if (self.part2) |p| try p.dupe(a) else null,
+        };
+    }
+
+    pub fn format(result: *const Result, w: *Io.Writer) Io.Writer.Error!void {
+        try w.print(
+            "Parse walltime: {f}, CPU time: {f}\nPart 1 solution: {s}, walltime: {f}, CPU time: {f}\n",
+            .{ result.parse_wall, result.parse_cpu, result.part1.solution, result.part1.wall, result.part1.cpu },
+        );
+        if (result.part2) |*part2| {
+            try w.print("Part 2 solution: {s}, walltime: {f}, CPU time: {f}", .{ part2.solution, part2.wall, part2.cpu });
+        } else {
+            try w.writeAll("Part 2 unsolved");
         }
     }
 };
@@ -80,11 +111,20 @@ pub fn makeDayRun(
     }.run;
 }
 
-pub const YearOptions = struct {
-    year_input_dir: Io.Dir,
-    day: ?Day,
-    client: ?*Client,
-    fetch_if_needed: bool,
+pub const DaySpec = struct {
+    day: Day,
+    run: *const DayRunFn,
+};
+
+pub const YearSpec = struct {
+    year: Year,
+    days: []const DaySpec,
+};
+
+pub const LabelledResult = struct {
+    year: Year,
+    day: Day,
+    result: anyerror!Result,
 };
 
 pub const YearError = error{
@@ -93,70 +133,76 @@ pub const YearError = error{
     InputNotFound,
 };
 
-pub const YearRunFn = fn (*const YearOptions, Allocator, Io) anyerror![]Result;
-
-pub fn makeYearRun(
-    comptime year: Year,
-    comptime days: []const @Tuple(.{ Day, type }),
-) YearRunFn {
-    var sorted_days = days;
-    std.mem.sortUnstable(@Tuple(.{ Day, type }), &sorted_days, {}, struct {
-        fn compare(context: void, a: @Tuple(.{ Day, type }), b: @Tuple(.{ Day, type })) bool {
-            _ = context;
-            return a[0] < b[0];
-        }
-    }.compare);
-    const run_fns = comptime blk: {
-        var run_fns: [sorted_days.len]@Tuple(.{ Day, []const u8, DayRunFn }) = undefined;
-        for (sorted_days, 0..) |day, i| {
-            run_fns[i][0] = day[0];
-            run_fns[i][1] = std.fmt.comptimePrint("{d:0>2}.input", .{day[0]});
-            run_fns[i][2] = day[1].run;
-            if (i + 1 < sorted_days.len and day[0] == sorted_days[i + 1][0]) {
-                @compileError("Cannot provide multiple days with the same date");
-            }
-        }
-        break :blk run_fns;
+/// The arena allocator is assumed to be free to reset in between days, i.e. it
+/// should be in a fresh state when passed in. The returned results should be allocated
+/// from the gpa.
+pub fn runYear(
+    year_spec: *const YearSpec,
+    inputs_dir: *Io.Dir,
+    specific_day: ?Day,
+    client: ?*Client,
+    fetch_if_needed: bool,
+    arena: *std.heap.ArenaAllocator,
+    gpa: Allocator,
+    io: Io,
+) ![]LabelledResult {
+    if (fetch_if_needed and client == null) {
+        return YearError.MissingClient;
+    }
+    // Keep 1GiB as the limit.
+    _ = arena.reset(.{ .retain_with_limit = 1 << 30 });
+    const arena_allocator = arena.allocator();
+    var year_inputs_dir = inputs_dir.openDir(
+        io,
+        &year_spec.year,
+        .{ .access_sub_paths = true, .iterate = false },
+    ) catch |err| switch (err) {
+        Io.Dir.OpenError.FileNotFound => try inputs_dir.createDirPathOpen(io, &year_spec.year, .{}),
+        else => {
+            return err;
+        },
     };
+    defer year_inputs_dir.close(io);
 
-    return struct {
-        fn run(opts: *const YearOptions, alloc: Allocator, io: Io) anyerror![]@Tuple(.{ Day, Result }) {
-            var results: std.ArrayList(@Tuple(.{ Day, Result })) = .initCapacity(alloc, if (opts.day == null) run_fns.len else 1);
-            errdefer {
-                for (results) |result_pair| {
-                    result_pair[1].deinit(alloc);
-                }
-                results.deinit(alloc);
-            }
-
-            for (run_fns) |day| {
-                if (opts.day != null and opts.day != day[0]) {
-                    continue;
-                }
-                const sub_path = day[1];
-                const input_data = try getInputData(
-                    opts.client,
-                    opts.fetch_if_needed,
-                    opts.year_input_dir,
-                    year,
-                    opts.day,
-                    sub_path,
-                    io,
-                    alloc,
-                );
-                const run_fn: DayRunFn = day[2];
-                results.appendAssumeCapacity(.{
-                    opts.day,
-                    run_fn(input_data, alloc, io) catch |err| {
-                        log.err("Year {d} day {d} failed to run with error: {t}", .{ year, opts.day, err });
-                        continue;
-                    },
-                });
-            }
-
-            return results.toOwnedSlice(alloc);
+    var results = try std.ArrayList(LabelledResult).initCapacity(gpa, if (specific_day == null) 1 else year_spec.days.len);
+    errdefer {
+        for (results.items) |*labeled_result| {
+            const r = labeled_result.result catch {
+                continue;
+            };
+            r.deinit(gpa);
         }
-    }.run;
+        results.deinit(gpa);
+    }
+
+    for (year_spec.days) |*day| {
+        if (!std.mem.eql(u8, &day.day, &(specific_day orelse day.day))) {
+            continue;
+        }
+        defer _ = arena.reset(.{ .retain_with_limit = 1 << 30 });
+
+        const input_data = try getInputData(
+            client,
+            fetch_if_needed,
+            year_inputs_dir,
+            year_spec.year,
+            day.day,
+            io,
+            arena_allocator,
+        );
+        const result = day.run(input_data, arena_allocator, io);
+        results.appendAssumeCapacity(.{
+            .day = day.day,
+            .year = year_spec.year,
+            .result = if (result) |r| r.dupe(gpa) else |e| e,
+        });
+    }
+
+    if (specific_day != null and results.items.len == 0) {
+        return YearError.DayNotImplemented;
+    }
+
+    return results.toOwnedSlice(gpa);
 }
 
 fn getInputData(
@@ -165,22 +211,28 @@ fn getInputData(
     year_dir: Io.Dir,
     year: Year,
     day: Day,
-    sub_path: []const u8,
     io: Io,
     alloc: Allocator,
 ) ![]const u8 {
     std.debug.assert(!fetch_if_needed or client != null);
 
+    const sub_path: [8]u8 = subpath: {
+        var template: [8]u8 = "  .input".*;
+        template[0] = day[0];
+        template[1] = day[1];
+        break :subpath template;
+    };
+
     const input_file = year_dir.openFile(
         io,
-        sub_path,
+        &sub_path,
         .{ .mode = .read_only, .allow_directory = false },
     ) catch |err| switch (err) {
         Io.File.OpenError.FileNotFound => blk: {
             if (!fetch_if_needed) {
-                return err;
+                return YearError.InputNotFound;
             }
-            break :blk try fetchInputData(client orelse unreachable, year_dir, year, day, sub_path, io, alloc);
+            break :blk try fetchInputData(client orelse unreachable, year_dir, year, day, &sub_path, io);
         },
         else => {
             return err;
@@ -189,7 +241,7 @@ fn getInputData(
     defer input_file.close(io);
 
     var buf: [1024]u8 = undefined;
-    const reader = input_file.reader(io, &buf);
+    var reader = input_file.reader(io, &buf);
     return reader.interface.allocRemaining(alloc, .limited(1 << 20));
 }
 
@@ -200,12 +252,11 @@ fn fetchInputData(
     day: Day,
     sub_path: []const u8,
     io: Io,
-    alloc: Allocator,
 ) !Io.File {
     const file = try year_dir.createFile(
         io,
         sub_path,
-        .{ .read = true, .lock = true },
+        .{ .read = true, .lock = .exclusive },
     );
     if (file.length(io) catch |err| {
         file.close(io);
@@ -216,22 +267,22 @@ fn fetchInputData(
     }
     errdefer {
         file.setLength(io, 0) catch |err| {
-            log.err("Unable to truncate input file {s} for year {d}, error {t}", .{ sub_path, year, err });
+            log.err("Unable to truncate input file {s} for year {s}, error {t}", .{ sub_path, year, err });
         };
         file.unlock(io);
         file.close(io);
         year_dir.deleteFile(io, sub_path) catch {
             log.err(
-                "Unable to delete potentially broken input file {s} for year {d}, user should manually delete/fix",
+                "Unable to delete potentially broken input file {s} for year {s}, user should manually delete/fix",
                 .{ sub_path, year },
             );
         };
     }
 
-    var buf: [128]u8 = undefined;
-    const writer = file.writerStreaming(io, &buf);
+    var buf: [1024]u8 = undefined;
+    var writer = file.writerStreaming(io, &buf);
 
-    try client.fetchInput(year, day, &writer.interface, alloc);
+    try client.fetchInput(year, day, &writer.interface);
     try writer.end();
     try file.sync(io);
     file.unlock(io);
