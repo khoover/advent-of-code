@@ -84,7 +84,7 @@ pub const YearOptions = struct {
     year_input_dir: Io.Dir,
     day: ?Day,
     client: ?*Client,
-    fetch: bool,
+    fetch_if_needed: bool,
 };
 
 pub const YearError = error{
@@ -136,7 +136,7 @@ pub fn makeYearRun(
                 const sub_path = day[1];
                 const input_data = try getInputData(
                     opts.client,
-                    opts.fetch,
+                    opts.fetch_if_needed,
                     opts.year_input_dir,
                     year,
                     opts.day,
@@ -161,7 +161,7 @@ pub fn makeYearRun(
 
 fn getInputData(
     client: ?*Client,
-    fetch: bool,
+    fetch_if_needed: bool,
     year_dir: Io.Dir,
     year: Year,
     day: Day,
@@ -169,7 +169,7 @@ fn getInputData(
     io: Io,
     alloc: Allocator,
 ) ![]const u8 {
-    std.debug.assert(!fetch or client != null);
+    std.debug.assert(!fetch_if_needed or client != null);
 
     const input_file = year_dir.openFile(
         io,
@@ -177,7 +177,7 @@ fn getInputData(
         .{ .mode = .read_only, .allow_directory = false },
     ) catch |err| switch (err) {
         Io.File.OpenError.FileNotFound => blk: {
-            if (!fetch) {
+            if (!fetch_if_needed) {
                 return err;
             }
             break :blk try fetchInputData(client orelse unreachable, year_dir, year, day, sub_path, io, alloc);
