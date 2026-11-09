@@ -1,6 +1,7 @@
 const std = @import("std");
 const Io = std.Io;
 const Allocator = std.mem.Allocator;
+const spec = @import("../spec.zig");
 
 pub fn SharedIterator(comptime T: type) type {
     return struct {
@@ -360,3 +361,15 @@ fn parseInner(comptime N: usize, input: []const u8, io: Io) !ProblemState {
     std.debug.assert(state.solution_2.load(.monotonic) != INITIAL_SOLUTION_VALUE);
     return state;
 }
+
+fn part1(state: ProblemState, alloc: Allocator, io: Io) ![]const u8 {
+    _ = io;
+    return std.fmt.allocPrint(alloc, "{d}", .{state.solution_1.load(.monotonic)});
+}
+
+fn part2(state: ProblemState, alloc: Allocator, io: Io) ![]const u8 {
+    _ = io;
+    return std.fmt.allocPrint(alloc, "{d}", .{state.solution_2.load(.monotonic)});
+}
+
+pub const run = spec.makeDayRun(ProblemState, parse, part1, part2, null);
