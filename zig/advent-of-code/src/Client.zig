@@ -5,7 +5,13 @@ const Allocator = std.mem.Allocator;
 
 const git_sha = @import("build_config").git_sha;
 
+const spec = @import("solutions/spec.zig");
+
 const Client = @This();
+cookie_header: []const u8,
+client: std.http.Client,
+io: Io,
+last_request_at: std.atomic.Value(i64) = .init(0),
 
 const AOC_URL = "https://adventofcode.com/{d}/day/{d}";
 const USER_AGENT = std.fmt.comptimePrint("github.com/khoover/advent-of-code/tree/main/zig/advent-of-code@{s}", .{git_sha});
@@ -15,11 +21,6 @@ pub const FetchError = error{
     ClientError,
     ServerError,
 };
-
-cookie_header: []const u8,
-client: std.http.Client,
-io: Io,
-last_request_at: std.atomic.Value(i64) = .init(0),
 
 pub fn init(token: []const u8, io: Io, alloc: Allocator) !Client {
     const cookie_header = try std.fmt.allocPrint(alloc, "session={s}", .{token});
@@ -67,8 +68,8 @@ fn waitForCooldown(client: *Client) Io.Cancelable!void {
 /// Fetches the input for the given year and day, writing it as-is into the given writer.
 pub fn fetchInput(
     client: *Client,
-    year: u16,
-    day: u8,
+    year: spec.Year,
+    day: spec.Day,
     writer: *Io.Writer,
     alloc: Allocator,
 ) !void {
