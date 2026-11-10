@@ -29,8 +29,8 @@ fn part1(parsed: *const ParseOutput, alloc: Allocator, io: Io) anyerror![]const 
     const input = parsed.*;
     var acc: u64 = 0;
     for (input) |dims| {
-        const smallest: u64 = dims[0] * dims[1];
-        const side_sum = smallest + @as(u64, dims[0] * dims[2] + dims[1] * dims[2]);
+        const smallest = dims[0] * dims[1];
+        const side_sum = smallest + dims[0] * dims[2] + dims[1] * dims[2];
         acc += 2 * side_sum + smallest;
     }
     _ = io;
@@ -38,10 +38,13 @@ fn part1(parsed: *const ParseOutput, alloc: Allocator, io: Io) anyerror![]const 
 }
 
 fn part2(parsed: *const ParseOutput, alloc: Allocator, io: Io) anyerror![]const u8 {
-    _ = parsed;
-    _ = alloc;
+    const input = parsed.*;
+    var acc: u64 = 0;
+    for (input) |dims| {
+        acc += 2 * (dims[0] + dims[1]) + dims[0] * dims[1] * dims[2];
+    }
     _ = io;
-    return error.DayNotImplemented;
+    return std.fmt.allocPrint(alloc, "{d}", .{acc});
 }
 
 fn deinit(parsed: *ParseOutput, alloc: Allocator, io: Io) void {
@@ -53,7 +56,7 @@ pub const run = spec.makeDayRun(
     ParseOutput,
     parse,
     part1,
-    null, // part2,
+    part2,
     deinit,
 );
 
@@ -66,6 +69,8 @@ const TestCase = struct {
 test "run test cases" {
     const cases = [_]TestCase{
         .{ .input = "2x3x4\n1x1x10\n", .part1_solution = "101" },
+        .{ .input = "2x3x4\n", .part2_solution = "34" },
+        .{ .input = "1x1x10", .part2_solution = "14" },
     };
     const io = std.testing.io;
     const alloc = std.testing.allocator;
