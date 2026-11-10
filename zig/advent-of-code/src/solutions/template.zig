@@ -49,7 +49,7 @@ test "run test cases" {
     const cases = [_]TestCase{};
     const io = std.testing.io;
     const alloc = std.testing.allocator;
-    for (cases) |*case| {
+    for (&cases) |*case| {
         const result = try run(case.input, alloc, io);
         defer result.deinit(alloc);
         if (case.part1_solution) |part1_solution| {
