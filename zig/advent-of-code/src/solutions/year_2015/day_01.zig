@@ -8,7 +8,7 @@ const ParseOutput = []const u8;
 fn parse(input: []const u8, alloc: Allocator, io: Io) anyerror!ParseOutput {
     _ = alloc;
     _ = io;
-    return input;
+    return std.mem.trim(u8, input, &std.ascii.whitespace);
 }
 
 fn part1(parsed: *const ParseOutput, alloc: Allocator, io: Io) anyerror![]const u8 {
