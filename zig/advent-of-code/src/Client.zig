@@ -14,8 +14,8 @@ io: Io,
 last_request_at: std.atomic.Value(i64) = .init(0),
 
 const AOC_URL_BASE = "https://adventofcode.com/YYYY/day/DD/SUFFIX";
-const YEAR_OFFSET = std.mem.indexOf(u8, AOC_URL_BASE, "YYYY") orelse @compileError("Broken URL base; no year segment");
-const DAY_OFFSET = std.mem.indexOf(u8, AOC_URL_BASE, "DD") orelse @compileError("Broken URL base; no day segment");
+const YEAR_OFFSET = std.mem.find(u8, AOC_URL_BASE, "YYYY") orelse @compileError("Broken URL base; no year segment");
+const DAY_OFFSET = std.mem.find(u8, AOC_URL_BASE, "DD") orelse @compileError("Broken URL base; no day segment");
 const USER_AGENT = std.fmt.comptimePrint("github.com/khoover/advent-of-code/tree/main/zig/advent-of-code@{s}", .{git_sha});
 
 pub const FetchError = error{
