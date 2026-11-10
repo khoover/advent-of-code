@@ -127,6 +127,10 @@ fn run() !void {
     };
     var arena = std.heap.ArenaAllocator.init(args.gpa);
     defer arena.deinit();
+    // Give it 512MiB to start
+    _ = try arena.allocator().alloc(u8, 1 << 29);
+    _ = arena.reset(.retain_capacity);
+    try preheatIo(args.io);
 
     for (&ALL_YEARS) |*year_spec| {
         if (!std.mem.eql(u8, &year_spec.year, &(year orelse year_spec.year))) {
@@ -157,4 +161,21 @@ fn run() !void {
     }
 
     return;
+}
+
+fn preheatIo(io: Io) !void {
+    const core_count = try std.Thread.getCpuCount();
+    var sem = Io.Semaphore{};
+    var group = Io.Group.init;
+    for (0..core_count) |_| {
+        group.concurrent(io, preheatWait, .{ &sem, io }) catch break;
+    }
+    for (0..core_count) |_| {
+        sem.post(io);
+    }
+    return group.await(io);
+}
+
+fn preheatWait(sem: *Io.Semaphore, io: Io) Io.Cancelable!void {
+    return sem.wait(io);
 }
