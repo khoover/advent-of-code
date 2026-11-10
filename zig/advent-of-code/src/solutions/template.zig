@@ -42,8 +42,8 @@ pub const run = spec.makeDayRun(
 
 const TestCase = struct {
     input: []const u8,
-    part1_solution: ?[]const u8,
-    part2_solution: ?[]const u8,
+    part1_solution: ?[]const u8 = null,
+    part2_solution: ?[]const u8 = null,
 };
 
 test "run test cases" {
