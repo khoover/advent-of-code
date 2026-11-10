@@ -26,7 +26,8 @@ fn part2(parsed: *const ParseOutput, alloc: Allocator, io: Io) anyerror![]const 
     return error.DayNotImplemented;
 }
 
-fn deinit(parsed: *ParseOutput, alloc: Allocator) void {
+fn deinit(parsed: *ParseOutput, alloc: Allocator, io: Io) void {
+    _ = io;
     _ = parsed;
     _ = alloc;
 }
