@@ -179,3 +179,7 @@ fn preheatIo(io: Io) !void {
 fn preheatWait(sem: *Io.Semaphore, io: Io) Io.Cancelable!void {
     return sem.wait(io);
 }
+
+test "root" {
+    std.testing.refAllDecls(@This());
+}
