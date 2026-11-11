@@ -131,8 +131,8 @@ pub fn makeDayRun(
         fn run(input_bytes: []const u8, alloc: Allocator, io: Io) anyerror!Result {
             var result: Result = undefined;
 
-            const wall_start = Io.Timestamp.now(io, .awake);
             const cpu_start = Io.Timestamp.now(io, .cpu_process);
+            const wall_start = Io.Timestamp.now(io, .awake);
 
             var parsed = try parse(input_bytes, alloc, io);
             defer if (deinit) |f| {
