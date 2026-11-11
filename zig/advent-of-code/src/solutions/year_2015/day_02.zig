@@ -13,14 +13,16 @@ fn minmax(a: u32, b: u32) struct { u32, u32 } {
 
 fn parse(input: []const u8, alloc: Allocator, io: Io) anyerror!ParseOutput {
     _ = io;
-    var result = std.ArrayList([3]u32).empty;
+    // Each line is at least 6 bytes long (1x1x1\n), so there's at most input.len / 6
+    // values.
+    var result = try std.ArrayList([3]u32).initCapacity(alloc, @divTrunc(input.len, 6));
     errdefer result.deinit(alloc);
 
     var input_iter = iter.Unsigned(32){ .buf = input };
     while (input_iter.next()) |first| {
         const a, const second = minmax(first, input_iter.next() orelse unreachable);
         const b, const c = minmax(second, input_iter.next() orelse unreachable);
-        try result.append(alloc, [3]u32{ a, b, c });
+        result.appendAssumeCapacity([3]u32{ a, b, c });
     }
     return result.toOwnedSlice(alloc);
 }
