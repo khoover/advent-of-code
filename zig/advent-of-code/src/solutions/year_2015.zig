@@ -5,6 +5,7 @@ const days = [_]spec.DaySpec{
     .{ .day = "02".*, .run = &@import("year_2015/day_02.zig").run },
     .{ .day = "03".*, .run = &@import("year_2015/day_03.zig").run },
     .{ .day = "04".*, .run = &@import("year_2015/day_04.zig").run },
+    .{ .day = "05".*, .run = &@import("year_2015/day_05.zig").run },
 };
 
 pub const YEAR_SPEC: spec.YearSpec = .{
