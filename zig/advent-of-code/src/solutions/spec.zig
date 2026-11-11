@@ -29,6 +29,21 @@ pub const Result = struct {
     part1: PartResult,
     part2: ?PartResult,
 
+    pub const EMPTY: @This() = .{
+        .parse_wall = .fromNanoseconds(0),
+        .parse_cpu = .fromNanoseconds(0),
+        .part1 = .{
+            .solution = "",
+            .wall = .fromNanoseconds(0),
+            .cpu = .fromNanoseconds(0),
+        },
+        .part2 = .{
+            .solution = "",
+            .wall = .fromNanoseconds(0),
+            .cpu = .fromNanoseconds(0),
+        },
+    };
+
     pub fn deinit(self: *const Result, alloc: Allocator) void {
         alloc.free(self.part1.solution);
         if (self.part2) |part2| {
@@ -47,15 +62,54 @@ pub const Result = struct {
         };
     }
 
+    pub fn addDurations(self: *Result, other: *const Result) void {
+        self.parse_wall.nanoseconds += other.parse_wall.nanoseconds;
+        self.parse_cpu.nanoseconds += other.parse_cpu.nanoseconds;
+        self.part1.wall.nanoseconds += other.part1.wall.nanoseconds;
+        self.part1.cpu.nanoseconds += other.part1.wall.nanoseconds;
+        if (self.part2) |*part2| {
+            if (other.part2) |*other_part2| {
+                part2.cpu.nanoseconds += other_part2.cpu.nanoseconds;
+                part2.wall.nanoseconds += other_part2.wall.nanoseconds;
+            }
+        } else if (other.part2) |*other_part2| {
+            self.part2 = .{
+                .solution = "",
+                .cpu = other_part2.cpu,
+                .wall = other_part2.wall,
+            };
+        }
+    }
+
     pub fn format(result: *const Result, w: *Io.Writer) Io.Writer.Error!void {
         try w.print(
-            "Parse walltime: {f}, CPU time: {f}\nPart 1 solution: {s}, walltime: {f}, CPU time: {f}\n",
-            .{ result.parse_wall, result.parse_cpu, result.part1.solution, result.part1.wall, result.part1.cpu },
+            "Parse walltime: {f}, CPU time: {f}\n",
+            .{ result.parse_wall, result.parse_cpu },
         );
+        try w.writeAll("Part 1 ");
+        if (result.part1.solution.len > 0) {
+            try w.print("solution: {s}, ", .{result.part1.solution});
+        }
+        try w.print(
+            "walltime: {f}, CPU time: {f}\n",
+            .{ result.part1.wall, result.part1.cpu },
+        );
+        try w.writeAll("Part 2 ");
         if (result.part2) |*part2| {
-            try w.print("Part 2 solution: {s}, walltime: {f}, CPU time: {f}", .{ part2.solution, part2.wall, part2.cpu });
+            if (part2.solution.len > 0) {
+                try w.print("solution: {s}, ", .{part2.solution});
+            }
+            try w.print(
+                "walltime: {f}, CPU time: {f}\nOverall walltime: {f}, CPU time: {f}",
+                .{
+                    part2.wall,
+                    part2.cpu,
+                    Io.Duration{ .nanoseconds = result.parse_wall.nanoseconds + result.part1.wall.nanoseconds + part2.wall.nanoseconds },
+                    Io.Duration{ .nanoseconds = result.parse_cpu.nanoseconds + result.part1.cpu.nanoseconds + part2.cpu.nanoseconds },
+                },
+            );
         } else {
-            try w.writeAll("Part 2 unsolved");
+            try w.writeAll("unsolved");
         }
     }
 };

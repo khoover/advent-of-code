@@ -132,10 +132,14 @@ fn run() !void {
     _ = arena.reset(.retain_capacity);
     try preheatIo(args.io);
 
+    var total_durations = spec.Result.EMPTY;
+
     for (&ALL_YEARS) |*year_spec| {
         if (!std.mem.eql(u8, &year_spec.year, &(year orelse year_spec.year))) {
             continue;
         }
+        var year_durations = spec.Result.EMPTY;
+
         const results = try spec.runYear(
             year_spec,
             &input_dir,
@@ -157,9 +161,14 @@ fn run() !void {
         }
         for (results) |*labeled_result| {
             log.info("Year {s} Day {s}\n{!f}", .{ labeled_result.year, labeled_result.day, labeled_result.result });
+            const result = labeled_result.result catch continue;
+            year_durations.addDurations(&result);
         }
+        log.info("Year {s} totals\n{f}", .{ &year_spec.year, year_durations });
+        total_durations.addDurations(&year_durations);
     }
 
+    log.info("Overall totals\n{f}", .{total_durations});
     return;
 }
 
