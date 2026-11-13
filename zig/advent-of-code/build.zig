@@ -116,17 +116,12 @@ pub fn build(b: *std.Build) void {
     const run_cmd = b.addRunArtifact(runner);
     run_cmd.step.dependOn(&decrypt_inputs.step);
     run_cmd.addFileArg(b.path("inputs"));
+    run_cmd.addPassthruArgs();
     run_step.dependOn(&run_cmd.step);
 
     // By making the run step depend on the default step, it will be run from the
     // installation directory rather than directly from within the cache directory.
     run_cmd.step.dependOn(&runner_install.step);
-
-    // This allows the user to pass arguments to the application in the build
-    // command itself, like this: `zig build run -- arg1 arg2 etc`
-    if (b.args) |args| {
-        run_cmd.addArgs(args);
-    }
 
     const install = b.getInstallStep();
     install.dependOn(&runner_install.step);

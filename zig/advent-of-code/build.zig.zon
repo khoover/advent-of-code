@@ -25,7 +25,7 @@
     .fingerprint = 0x45f1999b227c2bac, // Changing this has security and trust implications.
     // Tracks the earliest Zig version that the package considers to be a
     // supported use case.
-    .minimum_zig_version = "0.17.0-dev.340+c02d39a21",
+    .minimum_zig_version = "0.17.1",
     // This field is optional.
     // Each dependency must either provide a `url` and `hash`, or a `path`.
     // `zig build --fetch` can be used to fetch all dependencies of a package, recursively.
@@ -78,6 +78,7 @@
         "build.zig",
         "build.zig.zon",
         "src",
+        "libs",
         // For example...
         //"LICENSE",
         //"README.md",
