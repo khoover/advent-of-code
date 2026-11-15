@@ -164,11 +164,15 @@ fn run() !void {
             const result = labeled_result.result catch continue;
             year_durations.addDurations(&result);
         }
-        log.info("Year {s} totals\n{f}", .{ &year_spec.year, year_durations });
+        if (day == null) {
+            log.info("Year {s} totals\n{f}", .{ &year_spec.year, year_durations });
+        }
         total_durations.addDurations(&year_durations);
     }
 
-    log.info("Overall totals\n{f}", .{total_durations});
+    if (year == null) {
+        log.info("Overall totals\n{f}", .{total_durations});
+    }
     return;
 }
 
