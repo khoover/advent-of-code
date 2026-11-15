@@ -17,6 +17,10 @@ var args = struct {
     gpa: std.mem.Allocator = undefined,
 }{};
 
+pub const std_options: std.Options = .{
+    .side_channels_mitigations = .none,
+};
+
 pub fn main(init: std.process.Init) !void {
     args.io = init.io;
     args.gpa = init.gpa;
