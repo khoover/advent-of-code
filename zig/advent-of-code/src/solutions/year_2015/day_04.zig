@@ -2,33 +2,7 @@ const std = @import("std");
 const Io = std.Io;
 const Allocator = std.mem.Allocator;
 const spec = @import("../spec.zig");
-
-pub fn SharedIterator(comptime T: type) type {
-    return struct {
-        const Self = @This();
-
-        counter: std.atomic.Value(T),
-        finished: std.atomic.Value(bool) = .init(false),
-        increment: T,
-
-        pub fn init(start: T, increment: T) Self {
-            return .{ .counter = .init(start), .increment = increment };
-        }
-
-        pub fn next(self: *Self) ?T {
-            if (self.finished.load(.acquire)) {
-                @branchHint(.unlikely);
-                return null;
-            } else {
-                return self.counter.fetchAdd(self.increment, .acq_rel);
-            }
-        }
-
-        pub fn finish(self: *Self) bool {
-            return self.finished.swap(true, .acq_rel);
-        }
-    };
-}
+const SharedIterator = @import("libs").parallel.AtomicIterator;
 
 const md5_k: [64]u32 = .{
     0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee, 0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501,
