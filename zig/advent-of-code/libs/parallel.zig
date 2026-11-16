@@ -33,9 +33,9 @@ pub fn AtomicIterator(comptime T: type) type {
 
 pub fn CachePadded(comptime T: type) type {
     comptime {
-        const alignment = std.math.divCeil(comptime_int, @alignOf(T), atomic.cache_line) catch {
-            unreachable;
-        } * atomic.cache_line;
+        const alignment = std.mem.alignForward(usize, @alignOf(T), atomic.cache_line);
+        std.debug.assert(alignment >= @alignOf(T));
+        std.debug.assert(alignment >= atomic.cache_line);
         return struct {
             val: T align(alignment),
         };
@@ -46,52 +46,50 @@ pub const Bounds = packed struct(u64) { start: u32, end: u32 };
 pub const State = CachePadded(atomic.Value(u64));
 const INCREMENT: u64 = @backingInt(Bounds{ .start = 1, .end = 0 });
 
-pub fn WorkStealingIterator(comptime T: type) type {
-    return struct {
-        const Self = @This();
+pub const WorkStealingIterator = struct {
+    pub const Child = struct {
+        index: usize,
+        parent: *WorkStealingIterator,
 
-        pub const Child = struct {
-            index: usize,
-            parent: *Self,
-
-            pub fn next(self: *Child) ?*const T {
-                var state: *atomic.Value(u64) = &self.parent.children_state[self.index].val;
-                const fetched: Bounds = @fromBackingInt(state.fetchAdd(INCREMENT, .monotonic));
-                if (fetched.start < fetched.end) {
-                    return &self.parent.items[fetched.start];
-                } else if (stealWork(self.parent.children_state, self.index, fetched)) |idx| {
-                    return &self.parent.items[idx];
-                } else {
-                    return null;
-                }
+        pub fn next(self: *Child) ?u32 {
+            var state = &self.parent.children_state[self.index].val;
+            const fetched: Bounds = @fromBackingInt(state.fetchAdd(INCREMENT, .monotonic));
+            if (fetched.start < fetched.end) {
+                return fetched.start;
+            } else {
+                return stealWork(self.parent.children_state, self.index, fetched);
             }
-        };
-
-        items: []const T,
-        children_state: []State,
-
-        pub fn init(items: []const T, worker_count: u32, alloc: std.mem.Allocator) !Self {
-            std.debug.assert(items.len < std.math.maxInt(u32));
-            const len: u32 = @intCast(items.len);
-            const per_worker_size = try std.math.divCeil(u32, len, worker_count);
-
-            var states = try alloc.alloc(State, worker_count);
-            for (0..worker_count) |i| {
-                const start = @min(len, (i * per_worker_size));
-                const end = @min(len, start + per_worker_size);
-                states[i] = .{ .val = .init(@backingInt(Bounds{ .start = start, .end = end })) };
-            }
-        }
-
-        pub fn deinit(self: *Self, alloc: std.mem.Allocator) void {
-            alloc.free(self.children_state);
-        }
-
-        pub fn child(self: *Self, i: usize) Child {
-            return .{ .index = i, .parent = self };
         }
     };
-}
+
+    children_state: []State,
+
+    pub fn initAlloc(start: u32, end: u32, worker_count: u32, alloc: std.mem.Allocator) !WorkStealingIterator {
+        const states = try alloc.alloc(State, worker_count);
+        return .init(start, end, states);
+    }
+
+    pub fn init(start: u32, end: u32, children_state: []State) !WorkStealingIterator {
+        std.debug.assert(start < end);
+        const len = end - start;
+        const per_worker_size = try std.math.divCeil(u32, len, @intCast(children_state.len));
+        for (children_state, 0..) |*state, i| {
+            const state_start = @min(len, (i * per_worker_size));
+            const state_end = @min(len, state_start + per_worker_size);
+            state.* = .{ .val = .init(@backingInt(Bounds{ .start = state_start, .end = state_end })) };
+        }
+
+        return .{ .children_state = children_state };
+    }
+
+    pub fn free(self: *WorkStealingIterator, alloc: std.mem.Allocator) void {
+        alloc.free(self.children_state);
+    }
+
+    pub fn child(self: *WorkStealingIterator, idx: usize) Child {
+        return .{ .index = idx, .parent = self };
+    }
+};
 
 fn stealWork(children_state: []State, index: usize, current_bounds: Bounds) ?u32 {
     @branchHint(.cold);
