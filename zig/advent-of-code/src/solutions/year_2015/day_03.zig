@@ -27,7 +27,7 @@ fn part1(parsed: *const ParseOutput, alloc: Allocator, io: Io) anyerror![]const 
         current = current.add(p);
         point_set.putAssumeCapacity(current, {});
     }
-    return std.fmt.allocPrint(alloc, "{d}", .{point_set.unmanaged.size});
+    return std.fmt.allocPrint(alloc, "{d}", .{point_set.count()});
 }
 
 fn part2(parsed: *const ParseOutput, alloc: Allocator, io: Io) anyerror![]const u8 {
@@ -49,7 +49,7 @@ fn part2(parsed: *const ParseOutput, alloc: Allocator, io: Io) anyerror![]const 
     if (i < parsed.items.len) {
         point_set.putAssumeCapacity(santa.add(parsed.items[i]), {});
     }
-    return std.fmt.allocPrint(alloc, "{d}", .{point_set.unmanaged.size});
+    return std.fmt.allocPrint(alloc, "{d}", .{point_set.count()});
 }
 
 fn deinit(parsed: *ParseOutput, alloc: Allocator, io: Io) void {

@@ -7,7 +7,7 @@ const iter = @import("libs").iter;
 // Will be in ascending order
 const ParseOutput = []const [3]u32;
 
-fn minmax(a: u32, b: u32) struct { u32, u32 } {
+inline fn minmax(a: u32, b: u32) struct { u32, u32 } {
     return if (a < b) .{ a, b } else .{ b, a };
 }
 
