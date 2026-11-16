@@ -51,19 +51,19 @@ fn parse(input: []const u8, alloc: Allocator, io: Io) anyerror!ParseOutput {
     var parsed: [CIRCUIT_LEN]Instruction = @splat(.unknown);
 
     while (iter.next()) |first_token| {
-        const second_token = iter.next() orelse return error.UnexpectedEos;
+        const second_token = iter.next() orelse unreachable;
         const instruction: Instruction = blk: {
             if (std.mem.eql(u8, first_token, "NOT")) {
-                _ = iter.next() orelse return error.UnexpectedEos;
+                _ = iter.next() orelse unreachable;
                 break :blk .{ .not = indexOf(second_token) };
             } else if (std.mem.eql(u8, second_token, "->")) {
                 if (std.ascii.isDigit(first_token[0])) {
-                    break :blk .{ .constant = try std.fmt.parseInt(u16, first_token, 10) };
+                    break :blk .{ .constant = std.fmt.parseInt(u16, first_token, 10) catch unreachable };
                 } else {
                     break :blk .{ .ident = indexOf(first_token) };
                 }
             } else {
-                const third_token = iter.next() orelse return error.UnexpectedEos;
+                const third_token = iter.next() orelse unreachable;
                 _ = iter.next();
                 break :blk switch (second_token.len) {
                     2 => .{ .bitor = .{ indexOf(first_token), indexOf(third_token) } },
@@ -74,7 +74,7 @@ fn parse(input: []const u8, alloc: Allocator, io: Io) anyerror!ParseOutput {
                     },
                     6 => shift: {
                         const index = indexOf(first_token);
-                        const shift = try std.fmt.parseInt(u4, third_token, 10);
+                        const shift = std.fmt.parseInt(u4, third_token, 10) catch unreachable;
                         break :shift if (second_token[0] == 'L') .{
                             .lshift = .{ index, shift },
                         } else .{
@@ -86,7 +86,7 @@ fn parse(input: []const u8, alloc: Allocator, io: Io) anyerror!ParseOutput {
             }
         };
 
-        const output_wire = iter.next() orelse return error.UnexpectedEos;
+        const output_wire = iter.next() orelse unreachable;
         parsed[indexOf(output_wire)] = instruction;
     }
 
