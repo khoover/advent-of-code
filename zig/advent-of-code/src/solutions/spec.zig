@@ -66,7 +66,7 @@ pub const Result = struct {
         self.parse_wall.nanoseconds += other.parse_wall.nanoseconds;
         self.parse_cpu.nanoseconds += other.parse_cpu.nanoseconds;
         self.part1.wall.nanoseconds += other.part1.wall.nanoseconds;
-        self.part1.cpu.nanoseconds += other.part1.wall.nanoseconds;
+        self.part1.cpu.nanoseconds += other.part1.cpu.nanoseconds;
         if (self.part2) |*part2| {
             if (other.part2) |*other_part2| {
                 part2.cpu.nanoseconds += other_part2.cpu.nanoseconds;
